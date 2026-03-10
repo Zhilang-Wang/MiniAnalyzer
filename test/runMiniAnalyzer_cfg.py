@@ -23,6 +23,7 @@ process.load("Configuration.StandardSequences.FrontierConditions_GlobalTag_cff")
 # GlobalTag
 # ======================================
 process.GlobalTag = GlobalTag(process.GlobalTag, "126X_mcRun3_2023_forPU65_v3", "")
+process.load("TrackingTools.TransientTrack.TransientTrackBuilder_cfi")
 
 # ======================================
 # Timing service
@@ -31,7 +32,7 @@ process.Timing = cms.Service("Timing",
                              summaryOnly=cms.untracked.bool(True))
 
 # ======================================
-# Input files
+# Input files (MiniAODSIM)
 # ======================================
 process.source = cms.Source("PoolSource",
     fileNames=cms.untracked.vstring(
@@ -55,15 +56,13 @@ process.boostedMuons = cms.EDProducer("PATMuonCleanerBySegments",
     fractionOfSharedSegments=cms.double(0.499)
 )
 
-# ======================================
-# PatLeptonProducer
-# ======================================
-process.patLeptonProducer = cms.EDProducer("PatLeptonProducer",
-    muonSrc=cms.InputTag("boostedMuons")
+process.selectedMuons = cms.EDFilter("PATMuonSelector",
+    src=cms.InputTag("boostedMuons"),
+    cut=cms.string("pt > 5 && abs(eta) < 2.4")
 )
 
 # ======================================
-# Onia2MuMuPAT updated
+# Onia2MuMuPAT updated (MiniAOD-safe)
 # ======================================
 process.onia2MuMuPATUpdated = onia2MuMuPAT.clone(
     muons=cms.InputTag("boostedMuons"),
@@ -74,8 +73,7 @@ process.onia2MuMuPATUpdated = onia2MuMuPAT.clone(
     dimuonSelection=cms.string(""),  # J/psi mass window
     addCommonVertex=cms.bool(True),
     addMuonlessPrimaryVertex=cms.bool(False),
-    resolvePileUpAmbiguity=cms.bool(True),
-    doPsiPrime=cms.bool(False)
+    resolvePileUpAmbiguity=cms.bool(True)
 )
 
 # ======================================
@@ -90,7 +88,7 @@ process.MiniAnalyzer = cms.EDAnalyzer("MiniAnalyzer",
 # ======================================
 process.p = cms.Path(
     process.boostedMuons *
-    process.patLeptonProducer *
+    process.selectedMuons *
     process.onia2MuMuPATUpdated *
     process.MiniAnalyzer
 )

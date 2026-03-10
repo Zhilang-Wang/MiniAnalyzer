@@ -9,7 +9,8 @@
 #include "FWCore/Framework/interface/MakerMacros.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "FWCore/Utilities/interface/InputTag.h"
-
+#include "CommonTools/UtilAlgos/interface/TFileService.h"
+#include "FWCore/ServiceRegistry/interface/Service.h"
 #include "DataFormats/PatCandidates/interface/CompositeCandidate.h"
 
 using pat::CompositeCandidate;
@@ -50,7 +51,8 @@ MiniAnalyzer::MiniAnalyzer(const edm::ParameterSet& iConfig)
 // === beginJob: create TTree ===
 void MiniAnalyzer::beginJob()
 {
-    tree_ = new TTree("OniaTree", "Jpsi → μμ candidates");
+    edm::Service<TFileService> fs;
+    tree_ = fs->make<TTree>("OniaTree", "Jpsi -> mumu candidates");
 
     tree_->Branch("mass", &mass_, "mass/F");
     tree_->Branch("pt", &pt_, "pt/F");
@@ -111,12 +113,7 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&)
 }
 
 // === endJob: write TTree to file ===
-void MiniAnalyzer::endJob()
-{
-    TFile f("MiniAnalyzer_output.root", "RECREATE");
-    tree_->Write();
-    f.Close();
-}
+void MiniAnalyzer::endJob() {}
 
 // === fillDescriptions ===
 void MiniAnalyzer::fillDescriptions(edm::ConfigurationDescriptions& descriptions)

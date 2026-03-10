@@ -2,5 +2,6 @@
 <use name="FWCore/Framework"/>
 <use name="FWCore/ParameterSet"/>
 <use name="DataFormats/PatCandidates"/>
+<use name="CommonTools/UtilAlgos"/>
 <use name="FWCore/PluginManager"/>
 <flags EDM_PLUGIN="1"/> 
