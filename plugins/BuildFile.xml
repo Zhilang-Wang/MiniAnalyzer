@@ -1,0 +1,6 @@
+<use name="DataFormats/TrackReco"/>
+<use name="FWCore/Framework"/>
+<use name="FWCore/ParameterSet"/>
+<use name="DataFormats/PatCandidates"/>
+<use name="FWCore/PluginManager"/>
+<flags EDM_PLUGIN="1"/> 
