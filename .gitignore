@@ -1,0 +1,11 @@
+# CMSSW intermediate files
+*.root
+*.pyc
+__pycache__/
+*.o
+*.so
+*.d
+*.log
+*.pdf
+*.db
+*.sqlite
