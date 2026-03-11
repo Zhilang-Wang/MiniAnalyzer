@@ -37,6 +37,7 @@ process.Timing = cms.Service("Timing",
 process.source = cms.Source("PoolSource",
     fileNames=cms.untracked.vstring(
         "root://cms-xrd-global.cern.ch//store/mc/Run3Winter23MiniAOD/JPsiTo2Mu_Pt-0To100_pythia8-gun/MINIAODSIM/GTv3Digi_GTv3_MiniGTv3_126X_mcRun3_2023_forPU65_v3-v2/2550000/03f2d74a-7822-44fb-a914-dec5eaaa7b3e.root"
+        #"root://cms-xrd-global.cern.ch//store/mc/RunIII2024Summer24MiniAODv6/QCD_Bin-PT-600to800_TuneCP5_13p6TeV_pythia8/MINIAODSIM/150X_mcRun3_2024_realistic_v2-v2/120000/001ed309-7cae-4607-9912-42b5f774b870.root"
     )
 )
 
@@ -62,7 +63,7 @@ process.selectedMuons = cms.EDFilter("PATMuonSelector",
 )
 
 # ======================================
-# Onia2MuMuPAT updated (MiniAOD-safe)
+# Onia2MuMuPAT updated 
 # ======================================
 process.onia2MuMuPATUpdated = onia2MuMuPAT.clone(
     muons=cms.InputTag("boostedMuons"),
@@ -73,7 +74,8 @@ process.onia2MuMuPATUpdated = onia2MuMuPAT.clone(
     dimuonSelection=cms.string(""),  # J/psi mass window
     addCommonVertex=cms.bool(True),
     addMuonlessPrimaryVertex=cms.bool(False),
-    resolvePileUpAmbiguity=cms.bool(True)
+    resolvePileUpAmbiguity=cms.bool(True),     
+    addMCTruth = cms.bool(False)  # <--- 关闭 MC truth candidate
 )
 
 # ======================================

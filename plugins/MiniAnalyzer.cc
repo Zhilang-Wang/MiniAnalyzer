@@ -37,8 +37,6 @@ private:
     float ppdlPV_, ppdlErrPV_, ppdlBS_, ppdlErrBS_, cosAlpha_;
     float vertexWeight_, sumPTPV_, DCA_;
     int countTksOfPV_;
-    int momPDGId_;
-    float ppdlTrue_;
 };
 
 // === constructor ===
@@ -46,11 +44,7 @@ MiniAnalyzer::MiniAnalyzer(const edm::ParameterSet& iConfig)
 {
     myCandToken_ = consumes<std::vector<CompositeCandidate>>(
         iConfig.getParameter<edm::InputTag>("myCandLabel"));
-}
 
-// === beginJob: create TTree ===
-void MiniAnalyzer::beginJob()
-{
     edm::Service<TFileService> fs;
     tree_ = fs->make<TTree>("OniaTree", "Jpsi -> mumu candidates");
 
@@ -71,11 +65,12 @@ void MiniAnalyzer::beginJob()
     tree_->Branch("vertexWeight", &vertexWeight_, "vertexWeight/F");
     tree_->Branch("sumPTPV", &sumPTPV_, "sumPTPV/F");
     tree_->Branch("DCA", &DCA_, "DCA/F");
-    tree_->Branch("countTksOfPV", &countTksOfPV_, "countTksOfPV/I");
-
-    tree_->Branch("momPDGId", &momPDGId_, "momPDGId/I");
-    tree_->Branch("ppdlTrue", &ppdlTrue_, "ppdlTrue/F");
+    tree_->Branch("countTksOfPV", &countTksOfPV_, "countTksOfPV/I");    
 }
+
+// === beginJob: create TTree ===
+void MiniAnalyzer::beginJob(){}
+
 
 // === analyze: fill TTree ===
 void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&)
@@ -104,9 +99,6 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&)
         sumPTPV_ = cand.userFloat("sumPTPV");
         DCA_ = cand.userFloat("DCA");
         countTksOfPV_ = cand.userInt("countTksOfPV");
-
-        momPDGId_ = cand.userInt("momPDGId");
-        ppdlTrue_ = cand.userFloat("ppdlTrue");
 
         tree_->Fill();
     }
