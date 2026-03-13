@@ -103,10 +103,10 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&)
         const pat::Muon* mu2 = dynamic_cast<const pat::Muon*>(cand.daughter(1));
         if (!mu1 || !mu2) continue;
 
-        // SoftMuon 条件
+        // SoftMuon 
         if (!mu1->isSoftMuon(pv) || !mu2->isSoftMuon(pv)) continue;
 
-        // vProb 条件
+        // vProb > 0.01
         float vProb = cand.userFloat("vProb");
         if (vProb <= 0.01) continue;
 
@@ -118,7 +118,6 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&)
         }
     }
 
-    // 填充 TTree
     if (bestCand) {
         mass_ = bestCand->mass();
         pt_ = bestCand->pt();
@@ -142,7 +141,6 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&)
 // === endJob: write TTree to file ===
 void MiniAnalyzer::endJob() {}
 
-// === fillDescriptions ===
 // === fillDescriptions ===
 void MiniAnalyzer::fillDescriptions(edm::ConfigurationDescriptions& descriptions)
 {
