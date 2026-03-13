@@ -45,7 +45,7 @@ process.source = cms.Source("PoolSource",
 # Output TFileService
 # ======================================
 process.TFileService = cms.Service("TFileService",
-                                   fileName=cms.string("MiniAnalyzer_output.root"))
+                                   fileName=cms.string("./result/MiniAnalyzer_output.root"))
 
 # ======================================
 # Clean muons
@@ -71,7 +71,7 @@ process.onia2MuMuPATUpdated = onia2MuMuPAT.clone(
     primaryVertexTag=cms.InputTag("offlineSlimmedPrimaryVertices"),
     higherPuritySelection=cms.string("isTrackerMuon"),
     lowerPuritySelection=cms.string("isTrackerMuon"),
-    dimuonSelection=cms.string(""),  # J/psi mass window
+    dimuonSelection=cms.string("2 < mass && abs(daughter('muon1').innerTrack.dz - daughter('muon2').innerTrack.dz) < 25"),  # J/psi mass window
     addCommonVertex=cms.bool(True),
     addMuonlessPrimaryVertex=cms.bool(False),
     resolvePileUpAmbiguity=cms.bool(True),     
@@ -82,7 +82,8 @@ process.onia2MuMuPATUpdated = onia2MuMuPAT.clone(
 # MiniAnalyzer
 # ======================================
 process.MiniAnalyzer = cms.EDAnalyzer("MiniAnalyzer",
-    myCandLabel=cms.InputTag("onia2MuMuPATUpdated")
+    myCandLabel=cms.InputTag("onia2MuMuPATUpdated"),
+    primaryVertexTag = cms.InputTag("offlineSlimmedPrimaryVertices")
 )
 
 # ======================================
