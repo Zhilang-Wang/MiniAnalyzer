@@ -102,6 +102,9 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&)
         const pat::Muon* mu1 = dynamic_cast<const pat::Muon*>(cand.daughter(0));
         const pat::Muon* mu2 = dynamic_cast<const pat::Muon*>(cand.daughter(1));
         if (!mu1 || !mu2) continue;
+        
+        //moun PT > 3 GeV
+        if (mu1->pt() < 3.0 || mu2->pt() < 3.0) continue;
 
         // SoftMuon 
         if (!mu1->isSoftMuon(pv) || !mu2->isSoftMuon(pv)) continue;
