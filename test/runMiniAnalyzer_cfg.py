@@ -79,11 +79,46 @@ process.onia2MuMuPATUpdated = onia2MuMuPAT.clone(
 )
 
 # ======================================
+# Jets
+# ======================================
+process.load("PhysicsTools.PatAlgos.producersLayer1.jetUpdater_cff")
+
+process.jetCorrFactors = process.updatedPatJetCorrFactors.clone(
+    src = cms.InputTag("slimmedJets"),
+    levels = ['L1FastJet', 
+              'L2Relative', 
+              'L3Absolute'],
+    payload = 'AK4PFchs'
+)
+
+process.slimmedJetsJEC = process.updatedPatJets.clone(
+    jetSource = cms.InputTag("slimmedJets"),
+    jetCorrFactorsSource = cms.VInputTag(cms.InputTag("jetCorrFactors"))
+)
+
+# pileup jet id
+process.load("RecoJets.JetProducers.PileupJetID_cfi")
+
+process.pileupJetIdUpdated = process.pileupJetId.clone(
+    jets=cms.InputTag("slimmedJets"),
+    inputIsCorrected=False,
+    applyJec=True,
+    vertexes=cms.InputTag("offlineSlimmedPrimaryVertices")
+)
+
+process.slimmedJetsJEC.userData.userFloats.src += ['pileupJetIdUpdated:fullDiscriminant']
+process.slimmedJetsJEC.userData.userInts.src += ['pileupJetIdUpdated:fullId']
+
+
+# ======================================
 # MiniAnalyzer
 # ======================================
 process.MiniAnalyzer = cms.EDAnalyzer("MiniAnalyzer",
     myCandLabel=cms.InputTag("onia2MuMuPATUpdated"),
-    primaryVertexTag = cms.InputTag("offlineSlimmedPrimaryVertices")
+    primaryVertexTag = cms.InputTag("offlineSlimmedPrimaryVertices"),
+    pfCandsSrc   = cms.untracked.InputTag("packedPFCandidates"),
+    jetsSrc      = cms.untracked.InputTag("slimmedJetsJEC"),
+    pileupSrc     = cms.untracked.InputTag("slimmedAddPileupInfo")
 )
 
 # ======================================
@@ -93,5 +128,8 @@ process.p = cms.Path(
     process.boostedMuons *
     process.selectedMuons *
     process.onia2MuMuPATUpdated *
+    process.jetCorrFactors *
+    process.pileupJetIdUpdated *
+    process.slimmedJetsJEC *
     process.MiniAnalyzer
 )
