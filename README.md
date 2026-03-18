@@ -58,7 +58,7 @@
 ```bash
  g++ calQEC.cpp -o calQEC `root-config --cflags --libs`
 ```
--./calQEC input.root output.root
+- ./calQEC input.root output.root
 - cd ../plot/
 - python3 draw.py
 
