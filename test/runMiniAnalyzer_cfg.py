@@ -9,7 +9,7 @@ process = cms.Process("MiniAnalyzer")
 # ======================================
 process.load("FWCore.MessageService.MessageLogger_cfi")
 process.MessageLogger.cerr.FwkReport.reportEvery = 1000
-process.maxEvents = cms.untracked.PSet(input=cms.untracked.int32(1000))
+process.maxEvents = cms.untracked.PSet(input=cms.untracked.int32(-1))
 
 # ======================================
 # Standard services, geometry, magnetic field
@@ -35,17 +35,14 @@ process.Timing = cms.Service("Timing",
 # Input files (MiniAODSIM)
 # ======================================
 process.source = cms.Source("PoolSource",
-    fileNames=cms.untracked.vstring(
-        "root://cms-xrd-global.cern.ch//store/mc/Run3Winter23MiniAOD/JPsiTo2Mu_Pt-0To100_pythia8-gun/MINIAODSIM/GTv3Digi_GTv3_MiniGTv3_126X_mcRun3_2023_forPU65_v3-v2/2550000/03f2d74a-7822-44fb-a914-dec5eaaa7b3e.root"
-        #"root://cms-xrd-global.cern.ch//store/mc/RunIII2024Summer24MiniAODv6/QCD_Bin-PT-600to800_TuneCP5_13p6TeV_pythia8/MINIAODSIM/150X_mcRun3_2024_realistic_v2-v2/120000/001ed309-7cae-4607-9912-42b5f774b870.root"
-    )
+    fileNames=cms.untracked.vstring()
 )
 
 # ======================================
 # Output TFileService
 # ======================================
 process.TFileService = cms.Service("TFileService",
-                                   fileName=cms.string("./result/MiniAnalyzer_output.root"))
+                                   fileName=cms.string("DUMMYFILENAME.root"))
 
 # ======================================
 # Clean muons

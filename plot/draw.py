@@ -2,7 +2,7 @@ import uproot
 import numpy as np
 import matplotlib.pyplot as plt
 
-file_path = "../result/MiniAnalyzer_output.root"
+file_path = "/eos/user/z/zhilang/JPsiTo2Mu_Pt-0To100_pythia8-gun/MiniAnalyzer_JPsi_Run3/260317_121721/0000/DUMMYFILENAME_118.root"
 
 file = uproot.open(file_path)
 
