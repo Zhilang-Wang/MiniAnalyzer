@@ -56,7 +56,8 @@
 - cd /path/CMSSW_15_0_14/src/UserCode/MiniAnalyzer/QEC/calcQEC
 - vim calQEC.cpp
 ```bash
-- g++ calQEC.cpp -o calQEC `root-config --cflags --libs`
+ g++ calQEC.cpp -o calQEC `root-config --cflags --libs`
+```
 -./calQEC input.root output.root
 - cd ../plot/
 - python3 draw.py
