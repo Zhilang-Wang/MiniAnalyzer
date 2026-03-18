@@ -55,10 +55,9 @@
 9. **Prepare the calculation script and plot the coschi**
 - cd /path/CMSSW_15_0_14/src/UserCode/MiniAnalyzer/QEC/calcQEC
 - vim calQEC.cpp
+```bash
 - g++ calQEC.cpp -o calQEC `root-config --cflags --libs`
-- ```python
- ./calQEC <inputfile> <outputfile>
- ```
+-./calQEC input.root output.root
 - cd ../plot/
 - python3 draw.py
 
