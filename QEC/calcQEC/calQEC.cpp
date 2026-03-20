@@ -46,7 +46,6 @@ int main(int argc, char* argv[]) {
     tree->SetBranchAddress("ch_energy", &ch_energy);
 
     // construct histograms
-    TH2D* h_qec = new TH2D("QEC", "cos#chi vs E/M;cos#chi;E/M", 50, -1, 1, 50, 0, 5);
     TH1D* h_coschi = new TH1D("coschi", "cos#chi;cos#chi;Counts", 20, -1, 1); 
 
     Long64_t nEntries = tree->GetEntries();
@@ -73,14 +72,12 @@ int main(int argc, char* argv[]) {
         for (auto &ch : chs) {
             double coschi = jpsi.Vect().Dot(ch.Vect()) / (jpsi.Vect().Mag() * ch.Vect().Mag());
             double ec = ch.E() / jpsi.M();
-            h_qec->Fill(coschi, ec);
-            h_coschi->Fill(coschi);
+            h_coschi->Fill(coschi, ec);
         }
     }
 
 
     TFile* outputFile = new TFile(outputFileName, "RECREATE");
-    h_qec->Write();
     h_coschi->Write();
     outputFile->Close();
 

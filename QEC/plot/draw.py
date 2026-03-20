@@ -14,10 +14,10 @@ plt.step(edges, np.append(values, values[-1]), where='post', label="all particle
 
 plt.xlabel("coschi")
 plt.yscale("log")
-plt.ylim(1e-5, 10)
+plt.ylim(1e-8, 10)
 plt.xlim(-1, 1)
 plt.legend()
 plt.savefig("coschi.png", dpi=300)
 plt.close()
 
-print("Saved figure as coschi.png")
+print("Saved figure as coschi.png") 
