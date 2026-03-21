@@ -56,14 +56,14 @@ process.boostedMuons = cms.EDProducer("PATMuonCleanerBySegments",
 
 process.selectedMuons = cms.EDFilter("PATMuonSelector",
     src=cms.InputTag("boostedMuons"),
-    cut=cms.string("pt > 5 && abs(eta) < 2.4")
+    cut=cms.string("pt > 2 && abs(eta) < 2.4")
 )
 
 # ======================================
 # Onia2MuMuPAT updated 
 # ======================================
 process.onia2MuMuPATUpdated = onia2MuMuPAT.clone(
-    muons=cms.InputTag("boostedMuons"),
+    muons=cms.InputTag("selectedMuons"),
     beamSpotTag=cms.InputTag("offlineBeamSpot"),
     primaryVertexTag=cms.InputTag("offlineSlimmedPrimaryVertices"),
     higherPuritySelection=cms.string("isTrackerMuon"),
@@ -71,8 +71,8 @@ process.onia2MuMuPATUpdated = onia2MuMuPAT.clone(
     dimuonSelection=cms.string("2 < mass && abs(daughter('muon1').innerTrack.dz - daughter('muon2').innerTrack.dz) < 25"),  # J/psi mass window
     addCommonVertex=cms.bool(True),
     addMuonlessPrimaryVertex=cms.bool(False),
-    resolvePileUpAmbiguity=cms.bool(True),     
-    addMCTruth = cms.bool(False)  # <--- 关闭 MC truth candidate
+    resolvePileUpAmbiguity=cms.bool(True),
+    addMCTruth=cms.bool(False)  # <--- 关闭 MC truth candidate
 )
 
 # ======================================
