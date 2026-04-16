@@ -1,89 +1,125 @@
 #include "TFile.h"
 #include "TTree.h"
-#include "TH2D.h"
+#include "TH1D.h"
 #include "TLorentzVector.h"
 #include <vector>
 #include <iostream>
 
+using namespace std;
 
 int main(int argc, char* argv[]) {
 
     if (argc < 3) {
-        std::cout << "Usage: " << argv[0] << " <input ROOT file> <output ROOT file>" << std::endl;
+        cout << "Usage: " << argv[0] << " input.root output.root" << endl;
         return 1;
     }
 
-    TString inputFileName = argv[1];
-    TString outputFileName = argv[2];
-
-    TFile* inputFile = TFile::Open(inputFileName);
-    if (!inputFile || inputFile->IsZombie()) {
-        std::cerr << "Error opening input file!" << std::endl;
-        return 1;
-    }
-
+    TFile* inputFile = TFile::Open(argv[1]);
     TTree* tree = (TTree*)inputFile->Get("MiniAnalyzer/OniaTree");
-    if (!tree) {
-        std::cerr << "Error: TTree 'OniaTree' not found!" << std::endl;
-        return 1;
-    }
 
-    // J/psi branches
+    // Inclusive J/psi
     float jpsi_pt, jpsi_eta, jpsi_phi, jpsi_energy;
-    tree->SetBranchAddress("energy", &jpsi_energy);
-    tree->SetBranchAddress("pt", &jpsi_pt);
-    tree->SetBranchAddress("eta", &jpsi_eta);
-    tree->SetBranchAddress("phi", &jpsi_phi);
+    tree->SetBranchAddress("pt",      &jpsi_pt);
+    tree->SetBranchAddress("eta",     &jpsi_eta);
+    tree->SetBranchAddress("phi",     &jpsi_phi);
+    tree->SetBranchAddress("energy",  &jpsi_energy);
 
-    // charge hadron baranches
-    std::vector<float>* ch_pt = nullptr;
-    std::vector<float>* ch_eta = nullptr;
-    std::vector<float>* ch_phi = nullptr;
-    std::vector<float>* ch_energy = nullptr;
-    tree->SetBranchAddress("ch_pt", &ch_pt);
-    tree->SetBranchAddress("ch_eta", &ch_eta);
-    tree->SetBranchAddress("ch_phi", &ch_phi);
+    // AK4 jet
+    float ak4jet_pt, ak4jet_eta, ak4jet_phi, ak4jet_energy;
+    float ak4jet_dr_jpsi;
+    tree->SetBranchAddress("ak4jet_pt",      &ak4jet_pt);
+    tree->SetBranchAddress("ak4jet_eta",     &ak4jet_eta);
+    tree->SetBranchAddress("ak4jet_phi",     &ak4jet_phi);
+    tree->SetBranchAddress("ak4jet_energy",  &ak4jet_energy);
+    tree->SetBranchAddress("ak4jet_dr_jpsi", &ak4jet_dr_jpsi);
+
+    // Charged hadrons
+    vector<float>* ch_pt = nullptr;
+    vector<float>* ch_eta = nullptr;
+    vector<float>* ch_phi = nullptr;
+    vector<float>* ch_energy = nullptr;
+    tree->SetBranchAddress("ch_pt",     &ch_pt);
+    tree->SetBranchAddress("ch_eta",    &ch_eta);
+    tree->SetBranchAddress("ch_phi",    &ch_phi);
     tree->SetBranchAddress("ch_energy", &ch_energy);
 
-    // construct histograms
-    TH1D* h_coschi = new TH1D("coschi", "cos#chi;cos#chi;Counts", 20, -1, 1); 
+    // Jet constituents
+    vector<float>* ak4_dau_pt = nullptr;
+    vector<float>* ak4_dau_eta = nullptr;
+    vector<float>* ak4_dau_phi = nullptr;
+    vector<float>* ak4_dau_energy = nullptr;
+    tree->SetBranchAddress("ak4_dau_pt",     &ak4_dau_pt);
+    tree->SetBranchAddress("ak4_dau_eta",    &ak4_dau_eta);
+    tree->SetBranchAddress("ak4_dau_phi",    &ak4_dau_phi);
+    tree->SetBranchAddress("ak4_dau_energy", &ak4_dau_energy);
+
+    // Histograms
+    TH1D* h_coschi_inclusive_chadrons
+        = new TH1D("coschi_inclusive_chadrons", "Inclusive J/#psi + charged hadrons;cos#chi;", 20, -1, 1);
+
+    TH1D* h_coschi_inclusive_jetconst
+        = new TH1D("coschi_inclusive_jetconst", "Inclusive J/#psi + jet constituents;cos#chi;", 20, -1, 1);
+
+    TH1D* h_coschi_jet_jpsi
+        = new TH1D("coschi_jet_jpsi", "AK4 jet + constituents (J/#psi in jet);cos#chi;", 20, -1, 1);
+
 
     Long64_t nEntries = tree->GetEntries();
-    for (Long64_t i=0; i<nEntries; ++i) {
+    for (Long64_t i = 0; i < nEntries; ++i) {
         tree->GetEntry(i);
 
-        // construct J/psi TLorentzVector
         TLorentzVector jpsi;
         jpsi.SetPtEtaPhiE(jpsi_pt, jpsi_eta, jpsi_phi, jpsi_energy);
+        double m_jpsi = jpsi.M();
+        TVector3 boost_jpsi = -jpsi.BoostVector();
 
-        // construct charge hadron TLorentzVector
-        std::vector<TLorentzVector> chs;
-        for (size_t j=0; j<ch_pt->size(); ++j) {
-            TLorentzVector ch;
-            ch.SetPtEtaPhiE(ch_pt->at(j), ch_eta->at(j), ch_phi->at(j), ch_energy->at(j));
-            chs.push_back(ch);
+        TLorentzVector jet;
+        jet.SetPtEtaPhiE(ak4jet_pt, ak4jet_eta, ak4jet_phi, ak4jet_energy);
+        double m_jet = jet.M();
+        TVector3 boost_jet = -jet.BoostVector();
+
+
+        // 1. Inclusive J/psi + charged hadrons
+        for (size_t j = 0; j < ch_pt->size(); ++j) {
+            TLorentzVector h;
+            h.SetPtEtaPhiE(ch_pt->at(j), ch_eta->at(j), ch_phi->at(j), ch_energy->at(j));
+            h.Boost(boost_jpsi);
+            double coschi = jpsi.Vect().Dot(h.Vect()) / (jpsi.Vect().Mag() * h.Vect().Mag());
+            double w = h.E() / m_jpsi;
+            h_coschi_inclusive_chadrons->Fill(coschi, w);
         }
 
-        // Boost to J/psi rest frame
-        TVector3 boost_vector = -jpsi.BoostVector();
-        for (auto &ch : chs) ch.Boost(boost_vector);
-
-        // Calculate coschi and E/M
-        for (auto &ch : chs) {
-            double coschi = jpsi.Vect().Dot(ch.Vect()) / (jpsi.Vect().Mag() * ch.Vect().Mag());
-            double ec = ch.E() / jpsi.M();
-            h_coschi->Fill(coschi, ec);
+        // 2. Inclusive J/psi + jet constituents
+        for (size_t j = 0; j < ak4_dau_pt->size(); ++j) {
+            TLorentzVector h;
+            h.SetPtEtaPhiE(ak4_dau_pt->at(j), ak4_dau_eta->at(j), ak4_dau_phi->at(j), ak4_dau_energy->at(j));
+            h.Boost(boost_jpsi);
+            double coschi = jpsi.Vect().Dot(h.Vect()) / (jpsi.Vect().Mag() * h.Vect().Mag());
+            double w = h.E() / m_jpsi;
+            h_coschi_inclusive_jetconst->Fill(coschi, w);
         }
+
+        // 3. Jet-associated J/psi: use AK4 jet as mother
+    
+        for (size_t j = 0; j < ak4_dau_pt->size(); ++j) {
+            TLorentzVector h;
+            h.SetPtEtaPhiE(ak4_dau_pt->at(j), ak4_dau_eta->at(j), ak4_dau_phi->at(j), ak4_dau_energy->at(j));
+            h.Boost(boost_jet);
+            double coschi = jet.Vect().Dot(h.Vect()) / (jet.Vect().Mag() * h.Vect().Mag());
+            double w = h.E() / m_jet;
+            h_coschi_jet_jpsi->Fill(coschi, w);
+        }
+        
     }
 
-
-    TFile* outputFile = new TFile(outputFileName, "RECREATE");
-    h_coschi->Write();
-    outputFile->Close();
+    TFile* outFile = new TFile(argv[2], "RECREATE");
+    h_coschi_inclusive_chadrons->Write();
+    h_coschi_inclusive_jetconst->Write();
+    h_coschi_jet_jpsi->Write();
+    outFile->Close();
 
     inputFile->Close();
-
-    std::cout << "QEC calculation finished. Output saved to " << outputFileName << std::endl;
+    cout << "QEC calculation completed successfully." << endl;
 
     return 0;
 }

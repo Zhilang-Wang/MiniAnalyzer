@@ -4,49 +4,34 @@ from Configuration.AlCa.GlobalTag import GlobalTag
 
 process = cms.Process("MiniAnalyzer")
 
-# ======================================
-# Message logger & maxEvents
-# ======================================
 process.load("FWCore.MessageService.MessageLogger_cfi")
-process.MessageLogger.cerr.FwkReport.reportEvery = 1000
-process.maxEvents = cms.untracked.PSet(input=cms.untracked.int32(-1))
+process.MessageLogger.cerr.FwkReport.reportEvery = 100
+process.maxEvents = cms.untracked.PSet(input=cms.untracked.int32(1000))  
 
-# ======================================
-# Standard services, geometry, magnetic field
-# ======================================
 process.load("Configuration.StandardSequences.Services_cff")
 process.load("Configuration.StandardSequences.MagneticField_cff")
 process.load("Configuration.Geometry.GeometryRecoDB_cff")
 process.load("Configuration.StandardSequences.FrontierConditions_GlobalTag_cff")
 
-# ======================================
-# GlobalTag
-# ======================================
 process.GlobalTag = GlobalTag(process.GlobalTag, "126X_mcRun3_2023_forPU65_v3", "")
 process.load("TrackingTools.TransientTrack.TransientTrackBuilder_cfi")
 
-# ======================================
-# Timing service
-# ======================================
 process.Timing = cms.Service("Timing",
                              summaryOnly=cms.untracked.bool(True))
 
-# ======================================
-# Input files (MiniAODSIM)
-# ======================================
+
 process.source = cms.Source("PoolSource",
-    fileNames=cms.untracked.vstring()
+    fileNames = cms.untracked.vstring(
+        'root://cms-xrd-global.cern.ch//store/mc/Run3Winter23MiniAOD/JPsiTo2Mu_Pt-0To100_pythia8-gun/MINIAODSIM/GTv3Digi_GTv3_MiniGTv3_126X_mcRun3_2023_forPU65_v3-v2/2550000/03f2d74a-7822-44fb-a914-dec5eaaa7b3e.root'
+    )
 )
 
-# ======================================
-# Output TFileService
-# ======================================
 process.TFileService = cms.Service("TFileService",
-                                   fileName=cms.string("DUMMYFILENAME.root"))
+                                   fileName=cms.string("./result/test_JpsiInJet_1000ev.root"))
 
-# ======================================
-# Clean muons
-# ======================================
+# ------------------------------
+# Muon cleaning and selection
+# ------------------------------
 process.boostedMuons = cms.EDProducer("PATMuonCleanerBySegments",
     src=cms.InputTag("slimmedMuons"),
     preselection=cms.string("track.isNonnull"),
@@ -56,35 +41,33 @@ process.boostedMuons = cms.EDProducer("PATMuonCleanerBySegments",
 
 process.selectedMuons = cms.EDFilter("PATMuonSelector",
     src=cms.InputTag("boostedMuons"),
-    cut=cms.string("pt > 2 && abs(eta) < 2.4")
+    cut=cms.string("pt > 3 && abs(eta) < 2.4")
 )
 
-# ======================================
-# Onia2MuMuPAT updated 
-# ======================================
+# ------------------------------
+# Onia2MuMuPAT (J/psi -> mu mu)
+# ------------------------------
 process.onia2MuMuPATUpdated = onia2MuMuPAT.clone(
     muons=cms.InputTag("selectedMuons"),
     beamSpotTag=cms.InputTag("offlineBeamSpot"),
     primaryVertexTag=cms.InputTag("offlineSlimmedPrimaryVertices"),
     higherPuritySelection=cms.string("isTrackerMuon"),
     lowerPuritySelection=cms.string("isTrackerMuon"),
-    dimuonSelection=cms.string("2 < mass && abs(daughter('muon1').innerTrack.dz - daughter('muon2').innerTrack.dz) < 25"),  # J/psi mass window
+    dimuonSelection=cms.string("2.9 < mass < 3.3 && abs(daughter('muon1').innerTrack.dz - daughter('muon2').innerTrack.dz) < 25"),
     addCommonVertex=cms.bool(True),
     addMuonlessPrimaryVertex=cms.bool(False),
     resolvePileUpAmbiguity=cms.bool(True),
-    addMCTruth=cms.bool(False)  # <--- 关闭 MC truth candidate
+    addMCTruth=cms.bool(False)
 )
 
-# ======================================
-# Jets
-# ======================================
+# ------------------------------
+# AK4 Jets with JEC
+# ------------------------------
 process.load("PhysicsTools.PatAlgos.producersLayer1.jetUpdater_cff")
 
 process.jetCorrFactors = process.updatedPatJetCorrFactors.clone(
     src = cms.InputTag("slimmedJets"),
-    levels = ['L1FastJet', 
-              'L2Relative', 
-              'L3Absolute'],
+    levels = ['L1FastJet', 'L2Relative', 'L3Absolute'],
     payload = 'AK4PFchs'
 )
 
@@ -93,40 +76,54 @@ process.slimmedJetsJEC = process.updatedPatJets.clone(
     jetCorrFactorsSource = cms.VInputTag(cms.InputTag("jetCorrFactors"))
 )
 
-# pileup jet id
+# Pileup Jet ID for AK4
 process.load("RecoJets.JetProducers.PileupJetID_cfi")
-
 process.pileupJetIdUpdated = process.pileupJetId.clone(
     jets=cms.InputTag("slimmedJets"),
     inputIsCorrected=False,
     applyJec=True,
     vertexes=cms.InputTag("offlineSlimmedPrimaryVertices")
 )
-
 process.slimmedJetsJEC.userData.userFloats.src += ['pileupJetIdUpdated:fullDiscriminant']
 process.slimmedJetsJEC.userData.userInts.src += ['pileupJetIdUpdated:fullId']
 
-
-# ======================================
-# MiniAnalyzer
-# ======================================
-process.MiniAnalyzer = cms.EDAnalyzer("MiniAnalyzer",
-    myCandLabel=cms.InputTag("onia2MuMuPATUpdated"),
-    primaryVertexTag = cms.InputTag("offlineSlimmedPrimaryVertices"),
-    pfCandsSrc   = cms.untracked.InputTag("packedPFCandidates"),
-    jetsSrc      = cms.untracked.InputTag("slimmedJetsJEC"),
-    pileupSrc     = cms.untracked.InputTag("slimmedAddPileupInfo")
+# ------------------------------
+# AK8 Jets with JEC
+# ------------------------------
+process.ak8JetCorrFactors = process.updatedPatJetCorrFactors.clone(
+    src     = cms.InputTag("slimmedJetsAK8"),
+    levels  = ['L1FastJet', 'L2Relative', 'L3Absolute'],
+    payload = 'AK8PFchs'
 )
 
-# ======================================
-# Path
-# ======================================
+process.slimmedAK8JetsJEC = process.updatedPatJets.clone(
+    jetSource = cms.InputTag("slimmedJetsAK8"),
+    jetCorrFactorsSource = cms.VInputTag(cms.InputTag("ak8JetCorrFactors"))
+)
+
+# ------------------------------
+# MiniAnalyzer
+# ------------------------------
+process.MiniAnalyzer = cms.EDAnalyzer("MiniAnalyzer",
+    myCandLabel        = cms.InputTag("onia2MuMuPATUpdated"),
+    primaryVertexTag   = cms.InputTag("offlineSlimmedPrimaryVertices"),
+    pfCandsSrc         = cms.untracked.InputTag("packedPFCandidates"),
+    ak4JetSrc          = cms.untracked.InputTag("slimmedJetsJEC"),
+    ak8JetSrc          = cms.untracked.InputTag("slimmedAK8JetsJEC"),
+    pileupSrc          = cms.untracked.InputTag("slimmedAddPileupInfo")
+)
+
+# ------------------------------
+# Full Path
+# ------------------------------
 process.p = cms.Path(
-    process.boostedMuons *
-    process.selectedMuons *
-    process.onia2MuMuPATUpdated *
-    process.jetCorrFactors *
-    process.pileupJetIdUpdated *
-    process.slimmedJetsJEC *
-    process.MiniAnalyzer
+    process.boostedMuons
+    * process.selectedMuons
+    * process.onia2MuMuPATUpdated
+    * process.jetCorrFactors
+    * process.pileupJetIdUpdated
+    * process.slimmedJetsJEC
+    * process.ak8JetCorrFactors
+    * process.slimmedAK8JetsJEC
+    * process.MiniAnalyzer
 )

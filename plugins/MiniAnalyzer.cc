@@ -2,6 +2,7 @@
 #include <vector>
 #include "TFile.h"
 #include "TTree.h"
+#include "TLorentzVector.h"
 
 #include "FWCore/Framework/interface/Frameworkfwd.h"
 #include "FWCore/Framework/interface/one/EDAnalyzer.h"
@@ -34,34 +35,49 @@ private:
     void analyze(const edm::Event&, const edm::EventSetup&) override;
     void endJob() override;
 
-    // === tokens ===
     edm::EDGetTokenT<std::vector<CompositeCandidate>> myCandToken_;
     edm::EDGetTokenT<std::vector<reco::Vertex>> vtxToken_;
-    edm::EDGetTokenT<edm::View<pat::Jet>> jetSrc_;
+    edm::EDGetTokenT<edm::View<pat::Jet>> jetAK4Src_;
+    edm::EDGetTokenT<edm::View<pat::Jet>> jetAK8Src_;
     edm::EDGetTokenT<std::vector<PileupSummaryInfo>> pileupSrc_;
     edm::EDGetTokenT<pat::PackedCandidateCollection> pfCandsSrc_;
 
-    // === TTree ===
     TTree* tree_;
 
-    // === J/psi variables ===
     float mass_, pt_, eta_, phi_, charge_, energy_;
     float vNChi2_, vProb_;
     float ppdlPV_, ppdlErrPV_, ppdlBS_, ppdlErrBS_, cosAlpha_;
     float DCA_;
 
-    // === charged hadrons ===
     std::vector<float> ch_pt;
     std::vector<float> ch_eta;
     std::vector<float> ch_phi;
     std::vector<float> ch_mass;
     std::vector<float> ch_energy;
+
+    float ak4jet_pt, ak4jet_eta, ak4jet_phi, ak4jet_energy;
+    float ak4jet_dr_jpsi;
+    int   ak4jet_ndau;
+    std::vector<float> ak4_dau_pt, ak4_dau_eta, ak4_dau_phi, ak4_dau_energy;
+
+    float ak8jet_pt, ak8jet_eta, ak8jet_phi, ak8jet_energy;
+    float ak8jet_dr_jpsi;
+    int   ak8jet_ndau;
+    std::vector<float> ak8_dau_pt, ak8_dau_eta, ak8_dau_phi, ak8_dau_energy;
+
+    template<typename JetView>
+    void matchJetsToJpsi(
+        const JetView& jets,
+        const TLorentzVector& jpsi,
+        float& jet_pt, float& jet_eta, float& jet_phi, float& jet_energy,
+        float& dr_jpsi, int& ndau,
+        std::vector<float>& dau_pt, std::vector<float>& dau_eta,
+        std::vector<float>& dau_phi, std::vector<float>& dau_energy,
+        float jetR,
+        float jetPtCut,
+        float jetEtaCut
+    );
 };
-
-
-// =====================================
-// constructor
-// =====================================
 
 MiniAnalyzer::MiniAnalyzer(const edm::ParameterSet& iConfig)
 {
@@ -74,17 +90,17 @@ MiniAnalyzer::MiniAnalyzer(const edm::ParameterSet& iConfig)
     pfCandsSrc_ = consumes<pat::PackedCandidateCollection>(
         iConfig.getUntrackedParameter<edm::InputTag>("pfCandsSrc"));
 
-    jetSrc_ = consumes<edm::View<pat::Jet>>(
-        iConfig.getUntrackedParameter<edm::InputTag>("jetsSrc"));
+    jetAK4Src_ = consumes<edm::View<pat::Jet>>(
+        iConfig.getUntrackedParameter<edm::InputTag>("ak4JetSrc"));
+
+    jetAK8Src_ = consumes<edm::View<pat::Jet>>(
+        iConfig.getUntrackedParameter<edm::InputTag>("ak8JetSrc"));
 
     pileupSrc_ = consumes<std::vector<PileupSummaryInfo>>(
         iConfig.getUntrackedParameter<edm::InputTag>("pileupSrc"));
 
     edm::Service<TFileService> fs;
-
     tree_ = fs->make<TTree>("OniaTree","Jpsi -> mumu candidates");
-
-    // ===== J/psi branches =====
 
     tree_->Branch("mass",&mass_,"mass/F");
     tree_->Branch("pt",&pt_,"pt/F");
@@ -98,202 +114,246 @@ MiniAnalyzer::MiniAnalyzer(const edm::ParameterSet& iConfig)
 
     tree_->Branch("ppdlPV",&ppdlPV_,"ppdlPV/F");
     tree_->Branch("ppdlErrPV",&ppdlErrPV_,"ppdlErrPV/F");
-
     tree_->Branch("ppdlBS",&ppdlBS_,"ppdlBS/F");
     tree_->Branch("ppdlErrBS",&ppdlErrBS_,"ppdlErrBS/F");
-
     tree_->Branch("cosAlpha",&cosAlpha_,"cosAlpha/F");
-
     tree_->Branch("DCA",&DCA_,"DCA/F");
-
-    // ===== charged hadron branches =====
 
     tree_->Branch("ch_pt",&ch_pt);
     tree_->Branch("ch_eta",&ch_eta);
     tree_->Branch("ch_phi",&ch_phi);
     tree_->Branch("ch_mass",&ch_mass);
     tree_->Branch("ch_energy",&ch_energy);
+
+    tree_->Branch("ak4jet_pt",      &ak4jet_pt,      "ak4jet_pt/F");
+    tree_->Branch("ak4jet_eta",     &ak4jet_eta,     "ak4jet_eta/F");
+    tree_->Branch("ak4jet_phi",     &ak4jet_phi,     "ak4jet_phi/F");
+    tree_->Branch("ak4jet_energy",  &ak4jet_energy,  "ak4jet_energy/F");
+    tree_->Branch("ak4jet_dr_jpsi", &ak4jet_dr_jpsi, "ak4jet_dr_jpsi/F");
+    tree_->Branch("ak4jet_ndau",    &ak4jet_ndau,    "ak4jet_ndau/I");
+    tree_->Branch("ak4_dau_pt",     &ak4_dau_pt);
+    tree_->Branch("ak4_dau_eta",    &ak4_dau_eta);
+    tree_->Branch("ak4_dau_phi",    &ak4_dau_phi);
+    tree_->Branch("ak4_dau_energy", &ak4_dau_energy);
+
+    tree_->Branch("ak8jet_pt",      &ak8jet_pt,      "ak8jet_pt/F");
+    tree_->Branch("ak8jet_eta",     &ak8jet_eta,     "ak8jet_eta/F");
+    tree_->Branch("ak8jet_phi",     &ak8jet_phi,     "ak8jet_phi/F");
+    tree_->Branch("ak8jet_energy",  &ak8jet_energy,  "ak8jet_energy/F");
+    tree_->Branch("ak8jet_dr_jpsi", &ak8jet_dr_jpsi, "ak8jet_dr_jpsi/F");
+    tree_->Branch("ak8jet_ndau",    &ak8jet_ndau,    "ak8jet_ndau/I");
+    tree_->Branch("ak8_dau_pt",     &ak8_dau_pt);
+    tree_->Branch("ak8_dau_eta",    &ak8_dau_eta);
+    tree_->Branch("ak8_dau_phi",    &ak8_dau_phi);
+    tree_->Branch("ak8_dau_energy", &ak8_dau_energy);
 }
-
-
-// =====================================
-// beginJob
-// =====================================
 
 void MiniAnalyzer::beginJob(){}
 
-
-// =====================================
-// analyze
-// =====================================
-
-void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&)
+template<typename JetView>
+void MiniAnalyzer::matchJetsToJpsi(
+    const JetView& jets,
+    const TLorentzVector& jpsi,
+    float& jet_pt, float& jet_eta, float& jet_phi, float& jet_energy,
+    float& dr_jpsi, int& ndau,
+    std::vector<float>& dau_pt, std::vector<float>& dau_eta,
+    std::vector<float>& dau_phi, std::vector<float>& dau_energy,
+    float jetR,
+    float jetPtCut,
+    float jetEtaCut)
 {
+    jet_pt = -99;
+    jet_eta = -99;
+    jet_phi = -99;
+    jet_energy = -99;
+    dr_jpsi = 999;
+    ndau = 0;
 
-    // ===== get dimuon candidates =====
+    dau_pt.clear();
+    dau_eta.clear();
+    dau_phi.clear();
+    dau_energy.clear();
 
-    edm::Handle<std::vector<CompositeCandidate>> cands;
-    iEvent.getByToken(myCandToken_,cands);
-    if(!cands.isValid()) return;
+    const pat::Jet* bestJet = nullptr;
+    float minDR = 999;
 
+    for (const auto& j : jets) {
+        if (j.pt() < jetPtCut) continue;
+        if (fabs(j.eta()) > jetEtaCut) continue;
 
-    // ===== get vertices =====
-
-    edm::Handle<std::vector<reco::Vertex>> vertices;
-    iEvent.getByToken(vtxToken_,vertices);
-    if(!vertices.isValid() || vertices->empty()) return;
-
-    const reco::Vertex &pv = vertices->at(0);
-
-
-    // ===== get PF candidates =====
-
-    edm::Handle<pat::PackedCandidateCollection> pfs;
-    iEvent.getByToken(pfCandsSrc_,pfs);
-
-
-    // ===== find best J/psi =====
-
-    const CompositeCandidate* bestCand = nullptr;
-
-    float targetMass = 3.0969;
-    float minMassDiff = 1e6;
-
-
-    for(const auto &cand : *cands){
-
-        const pat::Muon* mu1 =
-            dynamic_cast<const pat::Muon*>(cand.daughter(0));
-
-        const pat::Muon* mu2 =
-            dynamic_cast<const pat::Muon*>(cand.daughter(1));
-
-        if(!mu1 || !mu2) continue;
-
-        // muon pT cut
-
-        if(mu1->pt() < 3.0 || mu2->pt() < 3.0) continue;
-
-        // SoftMuon ID
-
-        if(!mu1->isSoftMuon(pv) || !mu2->isSoftMuon(pv)) continue;
-
-        // vertex probability
-
-        float vProb = cand.userFloat("vProb");
-        if(vProb <= 0.01) continue;
-
-        // choose J/psi closest to nominal mass
-
-        float massDiff = std::abs(cand.mass() - targetMass);
-
-        if(massDiff < minMassDiff){
-            minMassDiff = massDiff;
-            bestCand = &cand;
+        TLorentzVector jjet;
+        jjet.SetPtEtaPhiE(j.pt(), j.eta(), j.phi(), j.energy());
+        float dr = jjet.DeltaR(jpsi);
+        if (dr < minDR) {
+            minDR = dr;
+            bestJet = &j;
         }
     }
 
+    if (!bestJet) return;
+    if (minDR > jetR) return;
 
-    // ===== clear vectors =====
+    dr_jpsi = minDR;
+    jet_pt = bestJet->pt();
+    jet_eta = bestJet->eta();
+    jet_phi = bestJet->phi();
+    jet_energy = bestJet->energy();
 
+    for (const auto& dau : bestJet->daughterPtrVector()) {
+        const pat::PackedCandidate* pf = dynamic_cast<const pat::PackedCandidate*>(dau.get());
+        if (!pf) continue;
+        if (pf->pt() < 1.0) continue;
+
+        dau_pt.push_back(pf->pt());
+        dau_eta.push_back(pf->eta());
+        dau_phi.push_back(pf->phi());
+        dau_energy.push_back(pf->energy());
+    }
+    ndau = dau_pt.size();
+}
+
+void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&)
+{
     ch_pt.clear();
     ch_eta.clear();
     ch_phi.clear();
     ch_mass.clear();
     ch_energy.clear();
 
+    ak4jet_pt = -99;
+    ak4jet_eta = -99;
+    ak4jet_phi = -99;
+    ak4jet_energy = -99;
+    ak4jet_dr_jpsi = 999;
+    ak4jet_ndau = 0;
+    ak4_dau_pt.clear();
+    ak4_dau_eta.clear();
+    ak4_dau_phi.clear();
+    ak4_dau_energy.clear();
 
-    // ===== fill J/psi =====
+    ak8jet_pt = -99;
+    ak8jet_eta = -99;
+    ak8jet_phi = -99;
+    ak8jet_energy = -99;
+    ak8jet_dr_jpsi = 999;
+    ak8jet_ndau = 0;
+    ak8_dau_pt.clear();
+    ak8_dau_eta.clear();
+    ak8_dau_phi.clear();
+    ak8_dau_energy.clear();
 
-    if(bestCand){
+    edm::Handle<std::vector<CompositeCandidate>> cands;
+    iEvent.getByToken(myCandToken_, cands);
+    if (!cands.isValid()) return;
 
-        mass_ = bestCand->mass();
-        pt_   = bestCand->pt();
-        eta_  = bestCand->eta();
-        phi_  = bestCand->phi();
-        charge_ = bestCand->charge();
-        energy_ = bestCand->energy();
+    edm::Handle<std::vector<reco::Vertex>> vertices;
+    iEvent.getByToken(vtxToken_, vertices);
+    if (!vertices.isValid() || vertices->empty()) return;
+    const reco::Vertex& pv = vertices->at(0);
 
-        vNChi2_ = bestCand->userFloat("vNChi2");
-        vProb_  = bestCand->userFloat("vProb");
+    const CompositeCandidate* bestCand = nullptr;
+    float minMassDiff = 1e6;
+    const float targetMass = 3.0969;
 
-        ppdlPV_     = bestCand->userFloat("ppdlPV");
-        ppdlErrPV_  = bestCand->userFloat("ppdlErrPV");
+    for (const auto& cand : *cands) {
+        float m = cand.mass();
+        if (m < 2.9 || m > 3.3) continue;
 
-        ppdlBS_     = bestCand->userFloat("ppdlBS");
-        ppdlErrBS_  = bestCand->userFloat("ppdlErrBS");
+        const pat::Muon* mu1 = dynamic_cast<const pat::Muon*>(cand.daughter(0));
+        const pat::Muon* mu2 = dynamic_cast<const pat::Muon*>(cand.daughter(1));
+        if (!mu1 || !mu2) continue;
 
-        cosAlpha_ = bestCand->userFloat("cosAlpha");
+        if (mu1->pt() < 3.0 || mu2->pt() < 3.0) continue;
+        if (!mu1->isSoftMuon(pv) || !mu2->isSoftMuon(pv)) continue;
 
-        DCA_ = bestCand->userFloat("DCA");
+        float vProb = cand.userFloat("vProb");
+        if (vProb <= 0.01) continue;
 
-
-        // ===== save charged hadrons =====
-
-        if(pfs.isValid()){
-
-            for(const auto &pf : *pfs){
-
-                if(pf.pt() <= 1.0) continue;
-
-                if(pf.charge() == 0) continue;
-
-                if(pf.fromPV() <= 0) continue;
-
-                int pdgid = pf.pdgId();
-
-                if(std::abs(pdgid)==11 || std::abs(pdgid)==13) continue;
-
-                ch_pt.push_back(pf.pt());
-                ch_eta.push_back(pf.eta());
-                ch_phi.push_back(pf.phi());
-                ch_mass.push_back(pf.mass());
-                ch_energy.push_back(pf.energy());
-            }
+        float diff = fabs(cand.mass() - targetMass);
+        if (diff < minMassDiff) {
+            minMassDiff = diff;
+            bestCand = &cand;
         }
-
-        tree_->Fill();
     }
+
+    if (!bestCand) return;
+
+    mass_ = bestCand->mass();
+    pt_ = bestCand->pt();
+    eta_ = bestCand->eta();
+    phi_ = bestCand->phi();
+    energy_ = bestCand->energy();
+    charge_ = bestCand->charge();
+
+    vNChi2_ = bestCand->userFloat("vNChi2");
+    vProb_ = bestCand->userFloat("vProb");
+    ppdlPV_ = bestCand->userFloat("ppdlPV");
+    ppdlErrPV_ = bestCand->userFloat("ppdlErrPV");
+    ppdlBS_ = bestCand->userFloat("ppdlBS");
+    ppdlErrBS_ = bestCand->userFloat("ppdlErrBS");
+    cosAlpha_ = bestCand->userFloat("cosAlpha");
+    DCA_ = bestCand->userFloat("DCA");
+
+    TLorentzVector jpsi;
+    jpsi.SetPtEtaPhiE(pt_, eta_, phi_, energy_);
+
+    edm::Handle<pat::PackedCandidateCollection> pfs;
+    iEvent.getByToken(pfCandsSrc_, pfs);
+    if (pfs.isValid()) {
+        for (const auto& pf : *pfs) {
+            if (pf.pt() <= 1.0) continue;
+            if (pf.charge() == 0) continue;
+            if (pf.fromPV() <= 0) continue;
+
+            int pdg = pf.pdgId();
+            if (abs(pdg) == 11 || abs(pdg) == 13) continue;
+
+            ch_pt.push_back(pf.pt());
+            ch_eta.push_back(pf.eta());
+            ch_phi.push_back(pf.phi());
+            ch_mass.push_back(pf.mass());
+            ch_energy.push_back(pf.energy());
+        }
+    }
+
+    edm::Handle<edm::View<pat::Jet>> ak4Jets;
+    edm::Handle<edm::View<pat::Jet>> ak8Jets;
+    iEvent.getByToken(jetAK4Src_, ak4Jets);
+    iEvent.getByToken(jetAK8Src_, ak8Jets);
+
+    const float jptCut = 30.0;
+    const float jetaCut = 5.0;
+
+    matchJetsToJpsi(*ak4Jets, jpsi,
+        ak4jet_pt, ak4jet_eta, ak4jet_phi, ak4jet_energy,
+        ak4jet_dr_jpsi, ak4jet_ndau,
+        ak4_dau_pt, ak4_dau_eta, ak4_dau_phi, ak4_dau_energy,
+        0.4, jptCut, jetaCut);
+
+    matchJetsToJpsi(*ak8Jets, jpsi,
+        ak8jet_pt, ak8jet_eta, ak8jet_phi, ak8jet_energy,
+        ak8jet_dr_jpsi, ak8jet_ndau,
+        ak8_dau_pt, ak8_dau_eta, ak8_dau_phi, ak8_dau_energy,
+        0.8, jptCut, jetaCut);
+
+    bool inAK4 = (ak4jet_dr_jpsi < 0.4);
+    bool inAK8 = (ak8jet_dr_jpsi < 0.8);
+    if (!inAK4 && !inAK8) return;
+
+    tree_->Fill();
 }
-
-
-// =====================================
-// endJob
-// =====================================
 
 void MiniAnalyzer::endJob(){}
 
-
-// =====================================
-// fillDescriptions
-// =====================================
-
 void MiniAnalyzer::fillDescriptions(edm::ConfigurationDescriptions& descriptions){
-
     edm::ParameterSetDescription desc;
-
     desc.add<edm::InputTag>("myCandLabel");
     desc.add<edm::InputTag>("primaryVertexTag");
-
-    desc.addUntracked<edm::InputTag>(
-        "pfCandsSrc",
-        edm::InputTag("packedPFCandidates")
-    );
-
-    desc.addUntracked<edm::InputTag>(
-        "jetsSrc",
-        edm::InputTag("slimmedJetsJEC")
-    );
-
-    desc.addUntracked<edm::InputTag>(
-        "pileupSrc",
-        edm::InputTag("slimmedAddPileupInfo")
-    );
-
-    descriptions.addDefault(desc);
+    desc.addUntracked<edm::InputTag>("pfCandsSrc", edm::InputTag("packedPFCandidates"));
+    desc.addUntracked<edm::InputTag>("ak4JetSrc", edm::InputTag("slimmedJetsJEC"));
+    desc.addUntracked<edm::InputTag>("ak8JetSrc", edm::InputTag("slimmedAK8JetsJEC"));
+    desc.addUntracked<edm::InputTag>("pileupSrc", edm::InputTag("slimmedAddPileupInfo"));
+    descriptions.add("default", desc);
 }
-
-
-// =====================================
 
 DEFINE_FWK_MODULE(MiniAnalyzer);
