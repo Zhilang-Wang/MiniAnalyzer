@@ -191,7 +191,7 @@ void MiniAnalyzer::matchJetsToJpsi(
     }
 
     if (!bestJet) return;
-    if (minDR > jetR) return;
+    //if (minDR > jetR) return;
 
     dr_jpsi = minDR;
     jet_pt = bestJet->pt();
@@ -336,9 +336,9 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&)
         ak8_dau_pt, ak8_dau_eta, ak8_dau_phi, ak8_dau_energy,
         0.8, jptCut, jetaCut);
 
-    bool inAK4 = (ak4jet_dr_jpsi < 0.4);
-    bool inAK8 = (ak8jet_dr_jpsi < 0.8);
-    if (!inAK4 && !inAK8) return;
+    //bool inAK4 = (ak4jet_dr_jpsi < 0.4);
+    //bool inAK8 = (ak8jet_dr_jpsi < 0.8);
+    //if (!inAK4 && !inAK8) return;
 
     tree_->Fill();
 }

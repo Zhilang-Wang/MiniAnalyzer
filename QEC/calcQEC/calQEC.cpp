@@ -60,8 +60,12 @@ int main(int argc, char* argv[]) {
     TH1D* h_coschi_inclusive_jetconst
         = new TH1D("coschi_inclusive_jetconst", "Inclusive J/#psi + jet constituents;cos#chi;", 20, -1, 1);
 
-    TH1D* h_coschi_jet_jpsi
-        = new TH1D("coschi_jet_jpsi", "AK4 jet + constituents (J/#psi in jet);cos#chi;", 20, -1, 1);
+    TH1D* h_coschi_inclusive_jpsi_jet
+        = new TH1D("coschi_inclusive_jpsi_jet", "Inclusive J/#psi + AK4 jet;cos#chi;", 20, -1, 1);
+
+    // ✨ NEW: J/psi inside AK4 jet (ΔR < 0.4)
+    TH1D* h_coschi_jet_in_jpsi_jet
+        = new TH1D("coschi_jet_in_jpsi_jet", "J/#psi inside AK4 jet + AK4 jet;cos#chi;", 20, -1, 1);
 
 
     Long64_t nEntries = tree->GetEntries();
@@ -72,12 +76,6 @@ int main(int argc, char* argv[]) {
         jpsi.SetPtEtaPhiE(jpsi_pt, jpsi_eta, jpsi_phi, jpsi_energy);
         double m_jpsi = jpsi.M();
         TVector3 boost_jpsi = -jpsi.BoostVector();
-
-        TLorentzVector jet;
-        jet.SetPtEtaPhiE(ak4jet_pt, ak4jet_eta, ak4jet_phi, ak4jet_energy);
-        double m_jet = jet.M();
-        TVector3 boost_jet = -jet.BoostVector();
-
 
         // 1. Inclusive J/psi + charged hadrons
         for (size_t j = 0; j < ch_pt->size(); ++j) {
@@ -99,27 +97,39 @@ int main(int argc, char* argv[]) {
             h_coschi_inclusive_jetconst->Fill(coschi, w);
         }
 
-        // 3. Jet-associated J/psi: use AK4 jet as mother
-    
-        for (size_t j = 0; j < ak4_dau_pt->size(); ++j) {
+        // 3. Inclusive J/psi + AK4 jet (ORIGINAL)
+        if (ak4jet_pt > 0) {
             TLorentzVector h;
-            h.SetPtEtaPhiE(ak4_dau_pt->at(j), ak4_dau_eta->at(j), ak4_dau_phi->at(j), ak4_dau_energy->at(j));
-            h.Boost(boost_jet);
-            double coschi = jet.Vect().Dot(h.Vect()) / (jet.Vect().Mag() * h.Vect().Mag());
-            double w = h.E() / m_jet;
-            h_coschi_jet_jpsi->Fill(coschi, w);
+            h.SetPtEtaPhiE(ak4jet_pt, ak4jet_eta, ak4jet_phi, ak4jet_energy);
+            h.Boost(boost_jpsi);
+
+            double coschi = jpsi.Vect().Dot(h.Vect()) / (jpsi.Vect().Mag() * h.Vect().Mag());
+            double w = h.E() / m_jpsi;
+            h_coschi_inclusive_jpsi_jet->Fill(coschi, w);
         }
-        
+
+        // ✨ 4. NEW: J/psi INSIDE jet (ΔR < 0.4)
+        if (ak4jet_pt > 0 && ak4jet_dr_jpsi < 0.4) {
+            TLorentzVector h;
+            h.SetPtEtaPhiE(ak4jet_pt, ak4jet_eta, ak4jet_phi, ak4jet_energy);
+            h.Boost(boost_jpsi);
+
+            double coschi = jpsi.Vect().Dot(h.Vect()) / (jpsi.Vect().Mag() * h.Vect().Mag());
+            double w = h.E() / m_jpsi;
+            h_coschi_jet_in_jpsi_jet->Fill(coschi, w);
+        }
+
     }
 
     TFile* outFile = new TFile(argv[2], "RECREATE");
     h_coschi_inclusive_chadrons->Write();
     h_coschi_inclusive_jetconst->Write();
-    h_coschi_jet_jpsi->Write();
+    h_coschi_inclusive_jpsi_jet->Write();
+    h_coschi_jet_in_jpsi_jet->Write();  
     outFile->Close();
 
     inputFile->Close();
-    cout << "QEC calculation completed successfully." << endl;
+    cout << "Inclusive QEC done." << endl;
 
     return 0;
 }
