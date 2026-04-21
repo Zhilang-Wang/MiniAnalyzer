@@ -2,46 +2,45 @@ import uproot
 import numpy as np
 import matplotlib.pyplot as plt
 
-file = uproot.open("../result/jpsi_InJet_20000ev.root")
+file = uproot.open("../result/jpsi_InJet_30000ev.root")
 
-# 读取 4 个 histogram
-h_incl        = file["coschi_inclusive_chadrons"]
-h_jet_all     = file["coschi_inclusive_jetconst"]
-h_jet         = file["coschi_inclusive_jpsi_jet"]
-h_jet_inside  = file["coschi_jet_in_jpsi_jet"]  
+# Read histograms from your output
+h_qec_charged     = file["qec_all_charged"]
+h_qec_jet_out     = file["qec_jet_out"]
+h_qec_jet_in      = file["qec_jet_in"]
 
-# 转成 numpy 数组
-v_incl, e_incl         = h_incl.to_numpy()
-v_jet_all, e_jet_all   = h_jet_all.to_numpy()
-v_jet, e_jet           = h_jet.to_numpy()
-v_jet_inside, e_jet_in = h_jet_inside.to_numpy() 
+# Convert to numpy arrays
+v_chadrons,  e_chadrons     = h_qec_charged.to_numpy()
+v_jet_out,   e_jet_out      = h_qec_jet_out.to_numpy()
+v_jet_in,    e_jet_in       = h_qec_jet_in.to_numpy()
 
-# 归一化
-v_incl        = v_incl / np.sum(v_incl)
-v_jet_all     = v_jet_all / np.sum(v_jet_all)
-v_jet         = v_jet / np.sum(v_jet)
-v_jet_inside  = v_jet_inside / np.sum(v_jet_inside) 
+# Normalize to unity
+v_chadrons     = v_chadrons / np.sum(v_chadrons)
+v_jet_out      = v_jet_out  / np.sum(v_jet_out)
+v_jet_in       = v_jet_in   / np.sum(v_jet_in)
 
-# ----------------------
-# 画图
-# ----------------------
+# Plot
 plt.figure(figsize=(8,6))
 
-plt.step(e_incl,    np.append(v_incl, v_incl[-1]),    where='post', label=r"Inclusive $J/\psi$ vs. all charged hadrons")
-plt.step(e_jet_all, np.append(v_jet_all, v_jet_all[-1]), where='post', label=r"Inclusive $J/\psi$ vs. all particles inside jet")
-plt.step(e_jet,     np.append(v_jet,     v_jet[-1]),     where='post', label=r"Inclusive $J/\psi$ vs. jet")
-plt.step(e_jet_in,  np.append(v_jet_inside, v_jet_inside[-1]),  where='post', label=r"$J/\psi$ inside AK4 jet vs. jet") 
+plt.step(e_chadrons, np.append(v_chadrons, v_chadrons[-1]),
+         where='post', label=r"$J/\psi$ vs. all charged hadrons")
+
+plt.step(e_jet_out, np.append(v_jet_out, v_jet_out[-1]),
+         where='post', label=r"$J/\psi$ outside AK8 jet vs. jet constituents")
+
+plt.step(e_jet_in, np.append(v_jet_in, v_jet_in[-1]),
+         where='post', label=r"$J/\psi$ inside AK8 jet vs. jet constituents")
 
 plt.xlabel(r"$\cos\chi$", fontsize=14)
 plt.ylabel("Normalized", fontsize=14)
 plt.yscale("log")
 plt.xlim(-1, 1)
-plt.ylim(1e-8, 1.0)  
+plt.ylim(1e-8, 1.0)
 plt.grid(alpha=0.3)
 plt.legend(fontsize=12)
 plt.tight_layout()
 
-plt.savefig("coschi_4cases.png", dpi=300)
+plt.savefig("coschi.png", dpi=300)
 plt.close()
 
-print("✅ Finished drawing coschi_4cases.png")
+print("Finished drawing coschi.png")

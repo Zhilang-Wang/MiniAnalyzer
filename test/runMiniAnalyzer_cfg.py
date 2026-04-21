@@ -6,7 +6,7 @@ process = cms.Process("MiniAnalyzer")
 
 process.load("FWCore.MessageService.MessageLogger_cfi")
 process.MessageLogger.cerr.FwkReport.reportEvery = 100
-process.maxEvents = cms.untracked.PSet(input=cms.untracked.int32(20000))  
+process.maxEvents = cms.untracked.PSet(input=cms.untracked.int32(30000))  
 
 process.load("Configuration.StandardSequences.Services_cff")
 process.load("Configuration.StandardSequences.MagneticField_cff")
@@ -28,7 +28,7 @@ process.source = cms.Source("PoolSource",
 )
 
 process.TFileService = cms.Service("TFileService",
-                                   fileName=cms.string("./result/jpsi_InJet_20000ev.root"))
+                                   fileName=cms.string("./result/jpsi_InJet_30000ev.root"))
 
 # ------------------------------
 # Muon cleaning and selection

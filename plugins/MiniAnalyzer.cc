@@ -26,14 +26,14 @@ using pat::CompositeCandidate;
 class MiniAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedResources> {
 public:
     explicit MiniAnalyzer(const edm::ParameterSet&);
-    ~MiniAnalyzer() override {}
+    ~MiniAnalyzer() override = default;
 
     static void fillDescriptions(edm::ConfigurationDescriptions& descriptions);
 
 private:
-    void beginJob() override;
+    void beginJob() override {}
     void analyze(const edm::Event&, const edm::EventSetup&) override;
-    void endJob() override;
+    void endJob() override {}
 
     edm::EDGetTokenT<std::vector<CompositeCandidate>> myCandToken_;
     edm::EDGetTokenT<std::vector<reco::Vertex>> vtxToken_;
@@ -45,38 +45,38 @@ private:
     TTree* tree_;
 
     float mass_, pt_, eta_, phi_, charge_, energy_;
+
     float vNChi2_, vProb_;
-    float ppdlPV_, ppdlErrPV_, ppdlBS_, ppdlErrBS_, cosAlpha_;
-    float DCA_;
+    float ppdlPV_, ppdlErrPV_, ppdlBS_, ppdlErrBS_, cosAlpha_, DCA_;
 
-    std::vector<float> ch_pt;
-    std::vector<float> ch_eta;
-    std::vector<float> ch_phi;
-    std::vector<float> ch_mass;
-    std::vector<float> ch_energy;
+    float mu1_pt_, mu1_eta_, mu1_phi_, mu1_energy_;
+    float mu2_pt_, mu2_eta_, mu2_phi_, mu2_energy_;
 
-    float ak4jet_pt, ak4jet_eta, ak4jet_phi, ak4jet_energy;
-    float ak4jet_dr_jpsi;
-    int   ak4jet_ndau;
-    std::vector<float> ak4_dau_pt, ak4_dau_eta, ak4_dau_phi, ak4_dau_energy;
+    std::vector<float> ch_pt, ch_eta, ch_phi, ch_mass, ch_energy;
 
-    float ak8jet_pt, ak8jet_eta, ak8jet_phi, ak8jet_energy;
-    float ak8jet_dr_jpsi;
-    int   ak8jet_ndau;
-    std::vector<float> ak8_dau_pt, ak8_dau_eta, ak8_dau_phi, ak8_dau_energy;
+    std::vector<float> ak4_jet_pt;
+    std::vector<float> ak4_jet_eta;
+    std::vector<float> ak4_jet_phi;
+    std::vector<float> ak4_jet_energy;
+    std::vector<float> ak4_jet_dr_jpsi;
 
-    template<typename JetView>
-    void matchJetsToJpsi(
-        const JetView& jets,
-        const TLorentzVector& jpsi,
-        float& jet_pt, float& jet_eta, float& jet_phi, float& jet_energy,
-        float& dr_jpsi, int& ndau,
-        std::vector<float>& dau_pt, std::vector<float>& dau_eta,
-        std::vector<float>& dau_phi, std::vector<float>& dau_energy,
-        float jetR,
-        float jetPtCut,
-        float jetEtaCut
-    );
+    std::vector<float> ak4_dau_pt;
+    std::vector<float> ak4_dau_eta;
+    std::vector<float> ak4_dau_phi;
+    std::vector<float> ak4_dau_energy;
+    std::vector<int>    ak4_dau_jetIndex;
+
+    std::vector<float> ak8_jet_pt;
+    std::vector<float> ak8_jet_eta;
+    std::vector<float> ak8_jet_phi;
+    std::vector<float> ak8_jet_energy;
+    std::vector<float> ak8_jet_dr_jpsi;
+
+    std::vector<float> ak8_dau_pt;
+    std::vector<float> ak8_dau_eta;
+    std::vector<float> ak8_dau_phi;
+    std::vector<float> ak8_dau_energy;
+    std::vector<int>    ak8_dau_jetIndex;
 };
 
 MiniAnalyzer::MiniAnalyzer(const edm::ParameterSet& iConfig)
@@ -100,116 +100,63 @@ MiniAnalyzer::MiniAnalyzer(const edm::ParameterSet& iConfig)
         iConfig.getUntrackedParameter<edm::InputTag>("pileupSrc"));
 
     edm::Service<TFileService> fs;
-    tree_ = fs->make<TTree>("OniaTree","Jpsi -> mumu candidates");
+    tree_ = fs->make<TTree>("OniaTree","Jpsi -> mumu + all jets");
 
-    tree_->Branch("mass",&mass_,"mass/F");
-    tree_->Branch("pt",&pt_,"pt/F");
-    tree_->Branch("eta",&eta_,"eta/F");
-    tree_->Branch("phi",&phi_,"phi/F");
-    tree_->Branch("energy",&energy_,"energy/F");
-    tree_->Branch("charge",&charge_,"charge/F");
+    tree_->Branch("mass",      &mass_,      "mass/F");
+    tree_->Branch("pt",        &pt_,        "pt/F");
+    tree_->Branch("eta",       &eta_,       "eta/F");
+    tree_->Branch("phi",       &phi_,       "phi/F");
+    tree_->Branch("energy",    &energy_,    "energy/F");
+    tree_->Branch("charge",    &charge_,    "charge/F");
 
-    tree_->Branch("vNChi2",&vNChi2_,"vNChi2/F");
-    tree_->Branch("vProb",&vProb_,"vProb/F");
+    tree_->Branch("vNChi2",    &vNChi2_,    "vNChi2/F");
+    tree_->Branch("vProb",     &vProb_,     "vProb/F");
+    tree_->Branch("ppdlPV",    &ppdlPV_,    "ppdlPV/F");
+    tree_->Branch("ppdlErrPV", &ppdlErrPV_, "ppdlErrPV/F");
+    tree_->Branch("ppdlBS",    &ppdlBS_,    "ppdlBS/F");
+    tree_->Branch("ppdlErrBS", &ppdlErrBS_, "ppdlErrBS/F");
+    tree_->Branch("cosAlpha",  &cosAlpha_,  "cosAlpha/F");
+    tree_->Branch("DCA",       &DCA_,       "DCA/F");
 
-    tree_->Branch("ppdlPV",&ppdlPV_,"ppdlPV/F");
-    tree_->Branch("ppdlErrPV",&ppdlErrPV_,"ppdlErrPV/F");
-    tree_->Branch("ppdlBS",&ppdlBS_,"ppdlBS/F");
-    tree_->Branch("ppdlErrBS",&ppdlErrBS_,"ppdlErrBS/F");
-    tree_->Branch("cosAlpha",&cosAlpha_,"cosAlpha/F");
-    tree_->Branch("DCA",&DCA_,"DCA/F");
+    tree_->Branch("mu1_pt",    &mu1_pt_,    "mu1_pt/F");
+    tree_->Branch("mu1_eta",   &mu1_eta_,   "mu1_eta/F");
+    tree_->Branch("mu1_phi",   &mu1_phi_,   "mu1_phi/F");
+    tree_->Branch("mu1_energy",&mu1_energy_,"mu1_energy/F");
 
-    tree_->Branch("ch_pt",&ch_pt);
-    tree_->Branch("ch_eta",&ch_eta);
-    tree_->Branch("ch_phi",&ch_phi);
-    tree_->Branch("ch_mass",&ch_mass);
-    tree_->Branch("ch_energy",&ch_energy);
+    tree_->Branch("mu2_pt",    &mu2_pt_,    "mu2_pt/F");
+    tree_->Branch("mu2_eta",   &mu2_eta_,   "mu2_eta/F");
+    tree_->Branch("mu2_phi",   &mu2_phi_,   "mu2_phi/F");
+    tree_->Branch("mu2_energy",&mu2_energy_,"mu2_energy/F");
 
-    tree_->Branch("ak4jet_pt",      &ak4jet_pt,      "ak4jet_pt/F");
-    tree_->Branch("ak4jet_eta",     &ak4jet_eta,     "ak4jet_eta/F");
-    tree_->Branch("ak4jet_phi",     &ak4jet_phi,     "ak4jet_phi/F");
-    tree_->Branch("ak4jet_energy",  &ak4jet_energy,  "ak4jet_energy/F");
-    tree_->Branch("ak4jet_dr_jpsi", &ak4jet_dr_jpsi, "ak4jet_dr_jpsi/F");
-    tree_->Branch("ak4jet_ndau",    &ak4jet_ndau,    "ak4jet_ndau/I");
-    tree_->Branch("ak4_dau_pt",     &ak4_dau_pt);
-    tree_->Branch("ak4_dau_eta",    &ak4_dau_eta);
-    tree_->Branch("ak4_dau_phi",    &ak4_dau_phi);
-    tree_->Branch("ak4_dau_energy", &ak4_dau_energy);
+    tree_->Branch("ch_pt",     &ch_pt);
+    tree_->Branch("ch_eta",    &ch_eta);
+    tree_->Branch("ch_phi",    &ch_phi);
+    tree_->Branch("ch_mass",   &ch_mass);
+    tree_->Branch("ch_energy", &ch_energy);
 
-    tree_->Branch("ak8jet_pt",      &ak8jet_pt,      "ak8jet_pt/F");
-    tree_->Branch("ak8jet_eta",     &ak8jet_eta,     "ak8jet_eta/F");
-    tree_->Branch("ak8jet_phi",     &ak8jet_phi,     "ak8jet_phi/F");
-    tree_->Branch("ak8jet_energy",  &ak8jet_energy,  "ak8jet_energy/F");
-    tree_->Branch("ak8jet_dr_jpsi", &ak8jet_dr_jpsi, "ak8jet_dr_jpsi/F");
-    tree_->Branch("ak8jet_ndau",    &ak8jet_ndau,    "ak8jet_ndau/I");
-    tree_->Branch("ak8_dau_pt",     &ak8_dau_pt);
-    tree_->Branch("ak8_dau_eta",    &ak8_dau_eta);
-    tree_->Branch("ak8_dau_phi",    &ak8_dau_phi);
-    tree_->Branch("ak8_dau_energy", &ak8_dau_energy);
-}
+    tree_->Branch("ak4_jet_pt",      &ak4_jet_pt);
+    tree_->Branch("ak4_jet_eta",     &ak4_jet_eta);
+    tree_->Branch("ak4_jet_phi",     &ak4_jet_phi);
+    tree_->Branch("ak4_jet_energy",  &ak4_jet_energy);
+    tree_->Branch("ak4_jet_dr_jpsi", &ak4_jet_dr_jpsi);
 
-void MiniAnalyzer::beginJob(){}
+    tree_->Branch("ak4_dau_pt",      &ak4_dau_pt);
+    tree_->Branch("ak4_dau_eta",     &ak4_dau_eta);
+    tree_->Branch("ak4_dau_phi",     &ak4_dau_phi);
+    tree_->Branch("ak4_dau_energy",  &ak4_dau_energy);
+    tree_->Branch("ak4_dau_jetIndex",&ak4_dau_jetIndex);
 
-template<typename JetView>
-void MiniAnalyzer::matchJetsToJpsi(
-    const JetView& jets,
-    const TLorentzVector& jpsi,
-    float& jet_pt, float& jet_eta, float& jet_phi, float& jet_energy,
-    float& dr_jpsi, int& ndau,
-    std::vector<float>& dau_pt, std::vector<float>& dau_eta,
-    std::vector<float>& dau_phi, std::vector<float>& dau_energy,
-    float jetR,
-    float jetPtCut,
-    float jetEtaCut)
-{
-    jet_pt = -99;
-    jet_eta = -99;
-    jet_phi = -99;
-    jet_energy = -99;
-    dr_jpsi = 999;
-    ndau = 0;
+    tree_->Branch("ak8_jet_pt",      &ak8_jet_pt);
+    tree_->Branch("ak8_jet_eta",     &ak8_jet_eta);
+    tree_->Branch("ak8_jet_phi",     &ak8_jet_phi);
+    tree_->Branch("ak8_jet_energy",  &ak8_jet_energy);
+    tree_->Branch("ak8_jet_dr_jpsi", &ak8_jet_dr_jpsi);
 
-    dau_pt.clear();
-    dau_eta.clear();
-    dau_phi.clear();
-    dau_energy.clear();
-
-    const pat::Jet* bestJet = nullptr;
-    float minDR = 999;
-
-    for (const auto& j : jets) {
-        if (j.pt() < jetPtCut) continue;
-        if (fabs(j.eta()) > jetEtaCut) continue;
-
-        TLorentzVector jjet;
-        jjet.SetPtEtaPhiE(j.pt(), j.eta(), j.phi(), j.energy());
-        float dr = jjet.DeltaR(jpsi);
-        if (dr < minDR) {
-            minDR = dr;
-            bestJet = &j;
-        }
-    }
-
-    if (!bestJet) return;
-    //if (minDR > jetR) return;
-
-    dr_jpsi = minDR;
-    jet_pt = bestJet->pt();
-    jet_eta = bestJet->eta();
-    jet_phi = bestJet->phi();
-    jet_energy = bestJet->energy();
-
-    for (const auto& dau : bestJet->daughterPtrVector()) {
-        const pat::PackedCandidate* pf = dynamic_cast<const pat::PackedCandidate*>(dau.get());
-        if (!pf) continue;
-        if (pf->pt() < 1.0) continue;
-
-        dau_pt.push_back(pf->pt());
-        dau_eta.push_back(pf->eta());
-        dau_phi.push_back(pf->phi());
-        dau_energy.push_back(pf->energy());
-    }
-    ndau = dau_pt.size();
+    tree_->Branch("ak8_dau_pt",      &ak8_dau_pt);
+    tree_->Branch("ak8_dau_eta",     &ak8_dau_eta);
+    tree_->Branch("ak8_dau_phi",     &ak8_dau_phi);
+    tree_->Branch("ak8_dau_energy",  &ak8_dau_energy);
+    tree_->Branch("ak8_dau_jetIndex",&ak8_dau_jetIndex);
 }
 
 void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&)
@@ -220,94 +167,96 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&)
     ch_mass.clear();
     ch_energy.clear();
 
-    ak4jet_pt = -99;
-    ak4jet_eta = -99;
-    ak4jet_phi = -99;
-    ak4jet_energy = -99;
-    ak4jet_dr_jpsi = 999;
-    ak4jet_ndau = 0;
+    ak4_jet_pt.clear();
+    ak4_jet_eta.clear();
+    ak4_jet_phi.clear();
+    ak4_jet_energy.clear();
+    ak4_jet_dr_jpsi.clear();
     ak4_dau_pt.clear();
     ak4_dau_eta.clear();
     ak4_dau_phi.clear();
     ak4_dau_energy.clear();
+    ak4_dau_jetIndex.clear();
 
-    ak8jet_pt = -99;
-    ak8jet_eta = -99;
-    ak8jet_phi = -99;
-    ak8jet_energy = -99;
-    ak8jet_dr_jpsi = 999;
-    ak8jet_ndau = 0;
+    ak8_jet_pt.clear();
+    ak8_jet_eta.clear();
+    ak8_jet_phi.clear();
+    ak8_jet_energy.clear();
+    ak8_jet_dr_jpsi.clear();
     ak8_dau_pt.clear();
     ak8_dau_eta.clear();
     ak8_dau_phi.clear();
     ak8_dau_energy.clear();
+    ak8_dau_jetIndex.clear();
 
     edm::Handle<std::vector<CompositeCandidate>> cands;
     iEvent.getByToken(myCandToken_, cands);
-    if (!cands.isValid()) return;
+    if (!cands.isValid() || cands->empty()) return;
 
-    edm::Handle<std::vector<reco::Vertex>> vertices;
-    iEvent.getByToken(vtxToken_, vertices);
-    if (!vertices.isValid() || vertices->empty()) return;
-    const reco::Vertex& pv = vertices->at(0);
+    edm::Handle<std::vector<reco::Vertex>> vtxs;
+    iEvent.getByToken(vtxToken_, vtxs);
+    if (!vtxs.isValid() || vtxs->empty()) return;
+    const reco::Vertex& pv = vtxs->at(0);
 
     const CompositeCandidate* bestCand = nullptr;
-    float minMassDiff = 1e6;
-    const float targetMass = 3.0969;
-
+    float minDm = 1e9;
     for (const auto& cand : *cands) {
         float m = cand.mass();
         if (m < 2.9 || m > 3.3) continue;
-
-        const pat::Muon* mu1 = dynamic_cast<const pat::Muon*>(cand.daughter(0));
-        const pat::Muon* mu2 = dynamic_cast<const pat::Muon*>(cand.daughter(1));
+        const auto* mu1 = (const pat::Muon*)cand.daughter(0);
+        const auto* mu2 = (const pat::Muon*)cand.daughter(1);
         if (!mu1 || !mu2) continue;
-
-        if (mu1->pt() < 3.0 || mu2->pt() < 3.0) continue;
-        if (!mu1->isSoftMuon(pv) || !mu2->isSoftMuon(pv)) continue;
-
-        float vProb = cand.userFloat("vProb");
-        if (vProb <= 0.01) continue;
-
-        float diff = fabs(cand.mass() - targetMass);
-        if (diff < minMassDiff) {
-            minMassDiff = diff;
+        if (mu1->pt() < 3 || mu2->pt() < 3) continue;
+        if (cand.userFloat("vProb") < 0.01) continue;
+        float dm = fabs(m - 3.0969);
+        if (dm < minDm) {
+            minDm = dm;
             bestCand = &cand;
         }
     }
-
     if (!bestCand) return;
 
-    mass_ = bestCand->mass();
-    pt_ = bestCand->pt();
-    eta_ = bestCand->eta();
-    phi_ = bestCand->phi();
+    const pat::Muon* mu1 = (const pat::Muon*)bestCand->daughter(0);
+    const pat::Muon* mu2 = (const pat::Muon*)bestCand->daughter(1);
+
+    mass_   = bestCand->mass();
+    pt_     = bestCand->pt();
+    eta_    = bestCand->eta();
+    phi_    = bestCand->phi();
     energy_ = bestCand->energy();
     charge_ = bestCand->charge();
 
-    vNChi2_ = bestCand->userFloat("vNChi2");
-    vProb_ = bestCand->userFloat("vProb");
-    ppdlPV_ = bestCand->userFloat("ppdlPV");
+    vNChi2_    = bestCand->userFloat("vNChi2");
+    vProb_     = bestCand->userFloat("vProb");
+    ppdlPV_    = bestCand->userFloat("ppdlPV");
     ppdlErrPV_ = bestCand->userFloat("ppdlErrPV");
-    ppdlBS_ = bestCand->userFloat("ppdlBS");
+    ppdlBS_    = bestCand->userFloat("ppdlBS");
     ppdlErrBS_ = bestCand->userFloat("ppdlErrBS");
-    cosAlpha_ = bestCand->userFloat("cosAlpha");
-    DCA_ = bestCand->userFloat("DCA");
+    cosAlpha_  = bestCand->userFloat("cosAlpha");
+    DCA_       = bestCand->userFloat("DCA");
+
+    mu1_pt_     = mu1->pt();
+    mu1_eta_    = mu1->eta();
+    mu1_phi_    = mu1->phi();
+    mu1_energy_ = mu1->energy();
+
+    mu2_pt_     = mu2->pt();
+    mu2_eta_    = mu2->eta();
+    mu2_phi_    = mu2->phi();
+    mu2_energy_ = mu2->energy();
 
     TLorentzVector jpsi;
     jpsi.SetPtEtaPhiE(pt_, eta_, phi_, energy_);
 
-    edm::Handle<pat::PackedCandidateCollection> pfs;
-    iEvent.getByToken(pfCandsSrc_, pfs);
-    if (pfs.isValid()) {
-        for (const auto& pf : *pfs) {
-            if (pf.pt() <= 1.0) continue;
-            if (pf.charge() == 0) continue;
-            if (pf.fromPV() <= 0) continue;
-
-            int pdg = pf.pdgId();
-            if (abs(pdg) == 11 || abs(pdg) == 13) continue;
-
+    edm::Handle<pat::PackedCandidateCollection> pfCands;
+    iEvent.getByToken(pfCandsSrc_, pfCands);
+    if (pfCands.isValid()) {
+        for (const auto& pf : *pfCands) {
+            if (pf.pt() < 1 || pf.charge() == 0 || pf.fromPV() < 0)
+                continue;
+            int id = abs(pf.pdgId());
+            if (id == 11 || id == 13)
+                continue;
             ch_pt.push_back(pf.pt());
             ch_eta.push_back(pf.eta());
             ch_phi.push_back(pf.phi());
@@ -317,35 +266,61 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&)
     }
 
     edm::Handle<edm::View<pat::Jet>> ak4Jets;
-    edm::Handle<edm::View<pat::Jet>> ak8Jets;
     iEvent.getByToken(jetAK4Src_, ak4Jets);
+    int idx4 = 0;
+    for (const auto& j : *ak4Jets) {
+        if (j.pt() < 30 || fabs(j.eta()) > 5)
+            continue;
+        TLorentzVector v;
+        v.SetPtEtaPhiE(j.pt(), j.eta(), j.phi(), j.energy());
+        ak4_jet_pt.push_back(j.pt());
+        ak4_jet_eta.push_back(j.eta());
+        ak4_jet_phi.push_back(j.phi());
+        ak4_jet_energy.push_back(j.energy());
+        ak4_jet_dr_jpsi.push_back(v.DeltaR(jpsi));
+
+        for (const auto& dtr : j.daughterPtrVector()) {
+            const auto* pf = (const pat::PackedCandidate*)dtr.get();
+            if (!pf) continue;
+            ak4_dau_pt.push_back(pf->pt());
+            ak4_dau_eta.push_back(pf->eta());
+            ak4_dau_phi.push_back(pf->phi());
+            ak4_dau_energy.push_back(pf->energy());
+            ak4_dau_jetIndex.push_back(idx4);
+        }
+        idx4++;
+    }
+
+    edm::Handle<edm::View<pat::Jet>> ak8Jets;
     iEvent.getByToken(jetAK8Src_, ak8Jets);
+    int idx8 = 0;
+    for (const auto& j : *ak8Jets) {
+        if (j.pt() < 30 || fabs(j.eta()) > 5)
+            continue;
+        TLorentzVector v;
+        v.SetPtEtaPhiE(j.pt(), j.eta(), j.phi(), j.energy());
+        ak8_jet_pt.push_back(j.pt());
+        ak8_jet_eta.push_back(j.eta());
+        ak8_jet_phi.push_back(j.phi());
+        ak8_jet_energy.push_back(j.energy());
+        ak8_jet_dr_jpsi.push_back(v.DeltaR(jpsi));
 
-    const float jptCut = 30.0;
-    const float jetaCut = 5.0;
-
-    matchJetsToJpsi(*ak4Jets, jpsi,
-        ak4jet_pt, ak4jet_eta, ak4jet_phi, ak4jet_energy,
-        ak4jet_dr_jpsi, ak4jet_ndau,
-        ak4_dau_pt, ak4_dau_eta, ak4_dau_phi, ak4_dau_energy,
-        0.4, jptCut, jetaCut);
-
-    matchJetsToJpsi(*ak8Jets, jpsi,
-        ak8jet_pt, ak8jet_eta, ak8jet_phi, ak8jet_energy,
-        ak8jet_dr_jpsi, ak8jet_ndau,
-        ak8_dau_pt, ak8_dau_eta, ak8_dau_phi, ak8_dau_energy,
-        0.8, jptCut, jetaCut);
-
-    //bool inAK4 = (ak4jet_dr_jpsi < 0.4);
-    //bool inAK8 = (ak8jet_dr_jpsi < 0.8);
-    //if (!inAK4 && !inAK8) return;
+        for (const auto& dtr : j.daughterPtrVector()) {
+            const auto* pf = (const pat::PackedCandidate*)dtr.get();
+            if (!pf) continue;
+            ak8_dau_pt.push_back(pf->pt());
+            ak8_dau_eta.push_back(pf->eta());
+            ak8_dau_phi.push_back(pf->phi());
+            ak8_dau_energy.push_back(pf->energy());
+            ak8_dau_jetIndex.push_back(idx8);
+        }
+        idx8++;
+    }
 
     tree_->Fill();
 }
 
-void MiniAnalyzer::endJob(){}
-
-void MiniAnalyzer::fillDescriptions(edm::ConfigurationDescriptions& descriptions){
+void MiniAnalyzer::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
     edm::ParameterSetDescription desc;
     desc.add<edm::InputTag>("myCandLabel");
     desc.add<edm::InputTag>("primaryVertexTag");
