@@ -43,6 +43,7 @@ int main(int argc, char* argv[]) {
     vector<float>* ak8_dau_eta     = nullptr;
     vector<float>* ak8_dau_phi     = nullptr;
     vector<float>* ak8_dau_energy  = nullptr;
+    vector<int>*   ak8_dau_charge  = nullptr;
 
     tree->SetBranchAddress("ak8_jet_pt",      &ak8_jet_pt);
     tree->SetBranchAddress("ak8_jet_eta",     &ak8_jet_eta);
@@ -53,6 +54,7 @@ int main(int argc, char* argv[]) {
     tree->SetBranchAddress("ak8_dau_eta",     &ak8_dau_eta);
     tree->SetBranchAddress("ak8_dau_phi",     &ak8_dau_phi);
     tree->SetBranchAddress("ak8_dau_energy",  &ak8_dau_energy);
+    tree->SetBranchAddress("ak8_dau_charge",  &ak8_dau_charge);
 
     vector<float>* ch_pt     = nullptr;
     vector<float>* ch_eta    = nullptr;
@@ -67,6 +69,10 @@ int main(int argc, char* argv[]) {
     TH1D* h_qec_charged = new TH1D("qec_all_charged", "QEC: J/#psi + all charged hadrons;cos#chi", 20, -1, 1);
     TH1D* h_qec_jet_out = new TH1D("qec_jet_out", "QEC: J/#psi outside AK8 jet;cos#chi", 20, -1, 1);
     TH1D* h_qec_jet_in  = new TH1D("qec_jet_in",  "QEC: J/#psi inside AK8 jet;cos#chi", 20, -1, 1);
+
+    TH1D* h_qec_jet_in_charged  = new TH1D("qec_jet_in_charged",  "QEC: J/#psi inside AK8 jet (charged);cos#chi", 20, -1, 1);
+    TH1D* h_qec_jet_in_neutral  = new TH1D("qec_jet_in_neutral",  "QEC: J/#psi inside AK8 jet (neutral);cos#chi", 20, -1, 1);
+    TH1D* h_qec_jet_all         = new TH1D("qec_jet_all",         "QEC: J/#psi + AK8 jet (all);cos#chi", 20, -1, 1);
 
     int nTotal = 0;
     int nInJet = 0;
@@ -86,12 +92,14 @@ int main(int argc, char* argv[]) {
         double mJpsi = jpsi.M();
         TVector3 boost = -jpsi.BoostVector();
 
-        for (size_t j = 0; j < ch_pt->size(); ++j) {
-            TLorentzVector h;
-            h.SetPtEtaPhiE(ch_pt->at(j), ch_eta->at(j), ch_phi->at(j), ch_energy->at(j));
-            h.Boost(boost);
-            double c = jpsi.Vect().Dot(h.Vect()) / (jpsi.Vect().Mag() * h.Vect().Mag());
-            h_qec_charged->Fill(c, h.E() / mJpsi);
+        if (ch_pt) {
+            for (size_t j = 0; j < ch_pt->size(); ++j) {
+                TLorentzVector h;
+                h.SetPtEtaPhiE(ch_pt->at(j), ch_eta->at(j), ch_phi->at(j), ch_energy->at(j));
+                h.Boost(boost);
+                double c = jpsi.Vect().Dot(h.Vect()) / (jpsi.Vect().Mag() * h.Vect().Mag());
+                h_qec_charged->Fill(c, h.E() / mJpsi);
+            }
         }
 
         bool jpsiInAnyJet = false;
@@ -109,28 +117,53 @@ int main(int argc, char* argv[]) {
         else
             nOutJet++;
 
-        if (jpsiInAnyJet) {
+        if (ak8_dau_pt && ak8_dau_charge) {
             for (size_t idau = 0; idau < ak8_dau_pt->size(); ++idau) {
                 TLorentzVector h;
                 h.SetPtEtaPhiE(ak8_dau_pt->at(idau), ak8_dau_eta->at(idau), ak8_dau_phi->at(idau), ak8_dau_energy->at(idau));
 
-                if ((fabs(h.Pt() - mu1.Pt()) < 1e-3 && fabs(h.Eta() - mu1.Eta()) < 1e-3 && fabs(h.Phi() - mu1.Phi()) < 1e-3) ||
-                    (fabs(h.Pt() - mu2.Pt()) < 1e-3 && fabs(h.Eta() - mu2.Eta()) < 1e-3 && fabs(h.Phi() - mu2.Phi()) < 1e-3)) {
-                    continue;
-                }
+                double dr1 = mu1.DeltaR(h);
+                double dr2 = mu2.DeltaR(h);
+                if (dr1 < 0.01 || dr2 < 0.01) continue;
 
                 h.Boost(boost);
                 double c = jpsi.Vect().Dot(h.Vect()) / (jpsi.Vect().Mag() * h.Vect().Mag());
-                h_qec_jet_in->Fill(c, h.E() / mJpsi);
+                double w = h.E() / mJpsi;
+                h_qec_jet_all->Fill(c, w);
             }
-        } else {
+        }
+
+        if (jpsiInAnyJet && ak8_dau_pt && ak8_dau_charge) {
+            for (size_t idau = 0; idau < ak8_dau_pt->size(); ++idau) {
+                TLorentzVector h;
+                h.SetPtEtaPhiE(ak8_dau_pt->at(idau), ak8_dau_eta->at(idau), ak8_dau_phi->at(idau), ak8_dau_energy->at(idau));
+
+                double dr1 = mu1.DeltaR(h);
+                double dr2 = mu2.DeltaR(h);
+                if (dr1 < 0.01 || dr2 < 0.01) continue;
+
+                int charge = ak8_dau_charge->at(idau);
+                h.Boost(boost);
+                double c = jpsi.Vect().Dot(h.Vect()) / (jpsi.Vect().Mag() * h.Vect().Mag());
+                double w = h.E() / mJpsi;
+
+                h_qec_jet_in->Fill(c, w);
+
+                if (charge != 0) {
+                    h_qec_jet_in_charged->Fill(c, w);
+                } else {
+                    h_qec_jet_in_neutral->Fill(c, w);
+                }
+            }
+        } else if (ak8_dau_pt) {
             for (size_t idau = 0; idau < ak8_dau_pt->size(); ++idau) {
                 TLorentzVector h;
                 h.SetPtEtaPhiE(ak8_dau_pt->at(idau), ak8_dau_eta->at(idau), ak8_dau_phi->at(idau), ak8_dau_energy->at(idau));
 
                 h.Boost(boost);
                 double c = jpsi.Vect().Dot(h.Vect()) / (jpsi.Vect().Mag() * h.Vect().Mag());
-                h_qec_jet_out->Fill(c, h.E() / mJpsi);
+                double w = h.E() / mJpsi;
+                h_qec_jet_out->Fill(c, w);
             }
         }
     }
@@ -147,6 +180,9 @@ int main(int argc, char* argv[]) {
     h_qec_charged->Write();
     h_qec_jet_out->Write();
     h_qec_jet_in->Write();
+    h_qec_jet_in_charged->Write();
+    h_qec_jet_in_neutral->Write();
+    h_qec_jet_all->Write();
     fout->Close();
     inputFile->Close();
 

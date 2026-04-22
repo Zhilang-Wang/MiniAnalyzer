@@ -65,6 +65,8 @@ private:
     std::vector<float> ak4_dau_phi;
     std::vector<float> ak4_dau_energy;
     std::vector<int>    ak4_dau_jetIndex;
+    std::vector<int>    ak4_dau_charge;   // NEW for AK4
+    std::vector<int>    ak4_dau_pdgId;     // NEW for AK4
 
     std::vector<float> ak8_jet_pt;
     std::vector<float> ak8_jet_eta;
@@ -77,6 +79,8 @@ private:
     std::vector<float> ak8_dau_phi;
     std::vector<float> ak8_dau_energy;
     std::vector<int>    ak8_dau_jetIndex;
+    std::vector<int>    ak8_dau_charge;
+    std::vector<int>    ak8_dau_pdgId;
 };
 
 MiniAnalyzer::MiniAnalyzer(const edm::ParameterSet& iConfig)
@@ -145,6 +149,8 @@ MiniAnalyzer::MiniAnalyzer(const edm::ParameterSet& iConfig)
     tree_->Branch("ak4_dau_phi",     &ak4_dau_phi);
     tree_->Branch("ak4_dau_energy",  &ak4_dau_energy);
     tree_->Branch("ak4_dau_jetIndex",&ak4_dau_jetIndex);
+    tree_->Branch("ak4_dau_charge",  &ak4_dau_charge);   // NEW
+    tree_->Branch("ak4_dau_pdgId",   &ak4_dau_pdgId);     // NEW
 
     tree_->Branch("ak8_jet_pt",      &ak8_jet_pt);
     tree_->Branch("ak8_jet_eta",     &ak8_jet_eta);
@@ -157,6 +163,8 @@ MiniAnalyzer::MiniAnalyzer(const edm::ParameterSet& iConfig)
     tree_->Branch("ak8_dau_phi",     &ak8_dau_phi);
     tree_->Branch("ak8_dau_energy",  &ak8_dau_energy);
     tree_->Branch("ak8_dau_jetIndex",&ak8_dau_jetIndex);
+    tree_->Branch("ak8_dau_charge",  &ak8_dau_charge);
+    tree_->Branch("ak8_dau_pdgId",   &ak8_dau_pdgId);
 }
 
 void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&)
@@ -177,6 +185,8 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&)
     ak4_dau_phi.clear();
     ak4_dau_energy.clear();
     ak4_dau_jetIndex.clear();
+    ak4_dau_charge.clear();   // NEW
+    ak4_dau_pdgId.clear();    // NEW
 
     ak8_jet_pt.clear();
     ak8_jet_eta.clear();
@@ -188,6 +198,8 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&)
     ak8_dau_phi.clear();
     ak8_dau_energy.clear();
     ak8_dau_jetIndex.clear();
+    ak8_dau_charge.clear();
+    ak8_dau_pdgId.clear();
 
     edm::Handle<std::vector<CompositeCandidate>> cands;
     iEvent.getByToken(myCandToken_, cands);
@@ -287,6 +299,8 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&)
             ak4_dau_phi.push_back(pf->phi());
             ak4_dau_energy.push_back(pf->energy());
             ak4_dau_jetIndex.push_back(idx4);
+            ak4_dau_charge.push_back(pf->charge());   // NEW
+            ak4_dau_pdgId.push_back(pf->pdgId());     // NEW
         }
         idx4++;
     }
@@ -313,6 +327,8 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup&)
             ak8_dau_phi.push_back(pf->phi());
             ak8_dau_energy.push_back(pf->energy());
             ak8_dau_jetIndex.push_back(idx8);
+            ak8_dau_charge.push_back(pf->charge());
+            ak8_dau_pdgId.push_back(pf->pdgId());
         }
         idx8++;
     }
