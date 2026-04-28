@@ -2,7 +2,7 @@ import uproot
 import numpy as np
 import matplotlib.pyplot as plt
 
-file = uproot.open("../result/jpsi_InJet_50000ev.root")
+file = uproot.open("../result/jpsi_Jet_50000ev_QCD.root")
 
 # Read histograms from your output
 h_qec_charged         = file["qec_all_charged"]
@@ -58,7 +58,7 @@ plt.grid(alpha=0.3)
 plt.legend(fontsize=12)
 plt.tight_layout()
 
-plt.savefig("coschi.png", dpi=300)
+plt.savefig("coschi_qcd.png", dpi=300)
 plt.close()
 
-print("Finished drawing coschi.png")
+print("Finished drawing coschi_qcd.png")
