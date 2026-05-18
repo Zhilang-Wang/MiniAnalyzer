@@ -160,7 +160,19 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
     ak8_dau_pt.clear(); ak8_dau_eta.clear(); ak8_dau_phi.clear(); ak8_dau_energy.clear();
     ak8_dau_jetIndex.clear(); ak8_dau_charge.clear(); ak8_dau_pdgId.clear();
 
-    // --- RECO Selection ---
+    mass_ = -999.0; pt_ = -999.0; eta_ = -999.0; phi_ = -999.0; energy_ = -999.0; charge_ = -999.0;
+    vNChi2_ = -999.0; vProb_ = -999.0; ppdlPV_ = -999.0; ppdlErrPV_ = -999.0;
+    ppdlBS_ = -999.0; ppdlErrBS_ = -999.0; cosAlpha_ = -999.0; DCA_ = -999.0;
+    mu1_pt_ = -999.0; mu1_eta_ = -999.0; mu1_phi_ = -999.0; mu1_energy_ = -999.0;
+    mu2_pt_ = -999.0; mu2_eta_ = -999.0; mu2_phi_ = -999.0; mu2_energy_ = -999.0;
+
+    jpsi_mother_pdgId_ = -999;
+    jpsi_grandmother_pdgId_ = -999;
+    nGenJpsi_ = 0;
+    nPrunedMuon_ = 0; 
+    hasBHadron_ = 0;
+    isFromB_ = 0;
+
     edm::Handle<std::vector<CompositeCandidate>> cands;
     iEvent.getByToken(myCandToken_, cands);
     const CompositeCandidate* bestCand = nullptr;
@@ -182,26 +194,20 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
         }
     }
 
-    if (bestCand) {
-        mass_ = bestCand->mass(); pt_ = bestCand->pt(); eta_ = bestCand->eta(); phi_ = bestCand->phi();
-        energy_ = bestCand->energy(); charge_ = bestCand->charge();
-        vNChi2_ = bestCand->userFloat("vNChi2"); vProb_ = bestCand->userFloat("vProb");
-        ppdlPV_ = bestCand->userFloat("ppdlPV"); ppdlErrPV_ = bestCand->userFloat("ppdlErrPV");
-        ppdlBS_ = bestCand->userFloat("ppdlBS"); ppdlErrBS_ = bestCand->userFloat("ppdlErrBS");
-        cosAlpha_ = bestCand->userFloat("cosAlpha"); DCA_ = bestCand->userFloat("DCA");
-        const pat::Muon* mu1_ptr = dynamic_cast<const pat::Muon*>(bestCand->daughter(0));
-        const pat::Muon* mu2_ptr = dynamic_cast<const pat::Muon*>(bestCand->daughter(1));
+    if (!bestCand) return;
+
+    mass_ = bestCand->mass(); pt_ = bestCand->pt(); eta_ = bestCand->eta(); phi_ = bestCand->phi();
+    energy_ = bestCand->energy(); charge_ = bestCand->charge();
+    vNChi2_ = bestCand->userFloat("vNChi2"); vProb_ = bestCand->userFloat("vProb");
+    ppdlPV_ = bestCand->userFloat("ppdlPV"); ppdlErrPV_ = bestCand->userFloat("ppdlErrPV");
+    ppdlBS_ = bestCand->userFloat("ppdlBS"); ppdlErrBS_ = bestCand->userFloat("ppdlErrBS");
+    cosAlpha_ = bestCand->userFloat("cosAlpha"); DCA_ = bestCand->userFloat("DCA");
+    const pat::Muon* mu1_ptr = dynamic_cast<const pat::Muon*>(bestCand->daughter(0));
+    const pat::Muon* mu2_ptr = dynamic_cast<const pat::Muon*>(bestCand->daughter(1));
+    if (mu1_ptr && mu2_ptr) {
         mu1_pt_ = mu1_ptr->pt(); mu1_eta_ = mu1_ptr->eta(); mu1_phi_ = mu1_ptr->phi(); mu1_energy_ = mu1_ptr->energy();
         mu2_pt_ = mu2_ptr->pt(); mu2_eta_ = mu2_ptr->eta(); mu2_phi_ = mu2_ptr->phi(); mu2_energy_ = mu2_ptr->energy();
-    } 
-
-    // --- MC Truth Analysis (Pruned-only Top-Down Logic) ---
-    jpsi_mother_pdgId_ = -999;
-    jpsi_grandmother_pdgId_ = -999;
-    nGenJpsi_ = 0;
-    nPrunedMuon_ = 0; 
-    hasBHadron_ = 0;
-    isFromB_ = 0;
+    }
 
     edm::Handle<edm::View<reco::GenParticle>> prunedgenParticles;
     iEvent.getByToken(prunedGenParticlesToken_, prunedgenParticles);
@@ -210,13 +216,9 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
         for (const auto& gen : *prunedgenParticles) {
             int absId = std::abs(gen.pdgId());
 
-            // Check B-Hadron Global Flag
             if ((absId / 100) == 5 || (absId / 1000) == 5) hasBHadron_ = 1;
-
-            // Count Muons in Pruned collection
             if (absId == 13) nPrunedMuon_++;
 
-            // Find J/psi and verify Muon daughters
             if (absId == 443) {
                 bool hasMuPlus = false;
                 bool hasMuMinus = false;
@@ -227,18 +229,16 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
                     if (dau->pdgId() == -13) hasMuPlus = true;
                 }
 
-                // Match J/psi -> mu+ mu-
                 if (hasMuPlus && hasMuMinus) {
                     nGenJpsi_++;
 
-                    // Trace Mother
                     if (gen.numberOfMothers() > 0) {
                         const reco::Candidate* mom = gen.mother(0);
-                        
-                        // Skip self-decay chains
-                        while (mom && std::abs(mom->pdgId()) == 443) {
+                        int depth = 0;
+                        while (mom && std::abs(mom->pdgId()) == 443 && depth < 10) {
                             if (mom->numberOfMothers() > 0) mom = mom->mother(0);
                             else break;
+                            depth++;
                         }
 
                         if (mom) {
@@ -256,7 +256,6 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
         }
     }
 
-    // --- PF Cands ---
     edm::Handle<pat::PackedCandidateCollection> pfCands;
     iEvent.getByToken(pfCandsSrc_, pfCands);
     if (pfCands.isValid()) {
@@ -268,7 +267,6 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
         }
     }
 
-    // --- Jets ---
     edm::Handle<edm::View<pat::Jet>> ak4Jets;
     iEvent.getByToken(jetAK4Src_, ak4Jets);
     if (ak4Jets.isValid()) {
