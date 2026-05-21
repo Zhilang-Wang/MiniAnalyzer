@@ -4,6 +4,9 @@ from Configuration.AlCa.GlobalTag import GlobalTag
 
 process = cms.Process("MiniAnalyzer")
 
+# ---------------------------------------------------------
+# Basic Services and Message Logger
+# ---------------------------------------------------------
 process.load("FWCore.MessageService.MessageLogger_cfi")
 process.MessageLogger.cerr.FwkReport.reportEvery = 100
 process.maxEvents = cms.untracked.PSet(input=cms.untracked.int32(10000))  
@@ -12,14 +15,17 @@ process.load("Configuration.StandardSequences.Services_cff")
 process.load("Configuration.StandardSequences.MagneticField_cff")
 process.load("Configuration.Geometry.GeometryRecoDB_cff")
 process.load("Configuration.StandardSequences.FrontierConditions_GlobalTag_cff")
-
-#process.GlobalTag = GlobalTag(process.GlobalTag, "126X_mcRun3_2023_forPU65_v3", "")
-process.GlobalTag = GlobalTag(process.GlobalTag, '150X_mcRun3_2024_realistic_v2', '')
 process.load("TrackingTools.TransientTrack.TransientTrackBuilder_cfi")
+
+# process.GlobalTag = GlobalTag(process.GlobalTag, "126X_mcRun3_2023_forPU65_v3", "")
+process.GlobalTag = GlobalTag(process.GlobalTag, '150X_mcRun3_2024_realistic_v2', '')
 
 process.Timing = cms.Service("Timing",
                              summaryOnly=cms.untracked.bool(True))
 
+# ---------------------------------------------------------
+# Source and Input Files
+# ---------------------------------------------------------
 process.source = cms.Source("PoolSource",
     fileNames = cms.untracked.vstring(
         'root://cms-xrd-global.cern.ch//store/mc/RunIII2024Summer24MiniAODv6/QCD_Bin-PT-600to800_TuneCP5_13p6TeV_pythia8/MINIAODSIM/150X_mcRun3_2024_realistic_v2-v2/120000/001ed309-7cae-4607-9912-42b5f774b870.root'
@@ -29,6 +35,20 @@ process.source = cms.Source("PoolSource",
 
 process.TFileService = cms.Service("TFileService",
                                    fileName=cms.string("./result/jpsi_Jet_10000ev_QCD.root"))
+
+# ---------------------------------------------------------
+# HLT Filter (Trigger Selection)
+# ---------------------------------------------------------
+process.triggerSelection = cms.EDFilter("HLTHighLevel",
+    TriggerResultsTag = cms.InputTag("TriggerResults","","HLT"),
+    HLTPaths = cms.vstring(
+        'HLT_DoubleMu4_3_LowMass_v*', 
+        'HLT_DoubleMu2_Jpsi_LowPt_v*'
+    ),
+    eventSetupPathsKey = cms.string(''),
+    andOr = cms.bool(True),
+    throw = cms.bool(False)
+)
 
 # ------------------------------
 # Muon cleaning and selection
@@ -49,12 +69,13 @@ process.selectedMuons = cms.EDFilter("PATMuonSelector",
 # Onia2MuMuPAT (J/psi -> mu mu)
 # ------------------------------
 process.onia2MuMuPATUpdated = onia2MuMuPAT.clone(
-    muons=cms.InputTag("selectedMuons"),
+    muons=cms.InputTag("boostedMuons"),
     beamSpotTag=cms.InputTag("offlineBeamSpot"),
     primaryVertexTag=cms.InputTag("offlineSlimmedPrimaryVertices"),
     higherPuritySelection=cms.string("isTrackerMuon"),
     lowerPuritySelection=cms.string("isTrackerMuon"),
-    dimuonSelection=cms.string("2.9 < mass < 3.3 && abs(daughter('muon1').innerTrack.dz - daughter('muon2').innerTrack.dz) < 25"),
+   #dimuonSelection=cms.string("2.9 < mass < 3.3 && abs(daughter('muon1').innerTrack.dz - daughter('muon2').innerTrack.dz) < 25"),
+    dimuonSelection=cms.string("2.9 < mass < 3.3"),
     addCommonVertex=cms.bool(True),
     addMuonlessPrimaryVertex=cms.bool(False),
     resolvePileUpAmbiguity=cms.bool(True),
@@ -118,13 +139,14 @@ process.MiniAnalyzer = cms.EDAnalyzer("MiniAnalyzer",
 # Full Path
 # ------------------------------
 process.p = cms.Path(
-    process.boostedMuons
-    * process.selectedMuons
-    * process.onia2MuMuPATUpdated
-    * process.jetCorrFactors
-    * process.pileupJetIdUpdated
-    * process.slimmedJetsJEC
-    * process.ak8JetCorrFactors
-    * process.slimmedAK8JetsJEC
-    * process.MiniAnalyzer
+    process.triggerSelection *
+    process.boostedMuons *
+    process.selectedMuons *
+    process.onia2MuMuPATUpdated *
+    process.jetCorrFactors *
+    process.pileupJetIdUpdated *
+    process.slimmedJetsJEC *
+    process.ak8JetCorrFactors *
+    process.slimmedAK8JetsJEC *
+    process.MiniAnalyzer
 )

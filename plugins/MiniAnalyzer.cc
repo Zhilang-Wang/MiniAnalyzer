@@ -26,6 +26,10 @@
 #include "SimDataFormats/PileupSummaryInfo/interface/PileupSummaryInfo.h"
 #include "DataFormats/HepMCCandidate/interface/GenParticle.h"
 
+// Trigger Headers
+#include "DataFormats/Common/interface/TriggerResults.h"
+#include "FWCore/Common/interface/TriggerNames.h"
+
 using pat::CompositeCandidate;
 
 class MiniAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedResources> {
@@ -39,6 +43,7 @@ private:
     void analyze(const edm::Event&, const edm::EventSetup&) override;
     void endJob() override {}
 
+    // Tokens
     edm::EDGetTokenT<std::vector<CompositeCandidate>> myCandToken_;
     edm::EDGetTokenT<std::vector<reco::Vertex>> vtxToken_;
     edm::EDGetTokenT<edm::View<pat::Jet>> jetAK4Src_;
@@ -46,9 +51,11 @@ private:
     edm::EDGetTokenT<std::vector<PileupSummaryInfo>> pileupSrc_;
     edm::EDGetTokenT<pat::PackedCandidateCollection> pfCandsSrc_;
     edm::EDGetTokenT<edm::View<reco::GenParticle>> prunedGenParticlesToken_;
+    edm::EDGetTokenT<edm::TriggerResults> triggerBitsToken_;
 
     TTree* tree_;
 
+    // Tree Variables
     float mass_, pt_, eta_, phi_, charge_, energy_;
     float vNChi2_, vProb_;
     float ppdlPV_, ppdlErrPV_, ppdlBS_, ppdlErrBS_, cosAlpha_, DCA_;
@@ -69,6 +76,10 @@ private:
     int nPrunedMuon_;
     int hasBHadron_;
     int isFromB_;
+
+    // Trigger variables
+    int passDoubleMu4_3_;
+    int passJpsiLowPt_;
 };
 
 MiniAnalyzer::MiniAnalyzer(const edm::ParameterSet& iConfig) {
@@ -81,6 +92,7 @@ MiniAnalyzer::MiniAnalyzer(const edm::ParameterSet& iConfig) {
     jetAK8Src_ = consumes<edm::View<pat::Jet>>(iConfig.getUntrackedParameter<edm::InputTag>("ak8JetSrc"));
     pileupSrc_ = consumes<std::vector<PileupSummaryInfo>>(iConfig.getUntrackedParameter<edm::InputTag>("pileupSrc"));
     prunedGenParticlesToken_ = consumes<edm::View<reco::GenParticle>>(iConfig.getUntrackedParameter<edm::InputTag>("prunedGenParticlesSrc"));
+    triggerBitsToken_ = consumes<edm::TriggerResults>(edm::InputTag("TriggerResults", "", "HLT"));
 
     edm::Service<TFileService> fs;
     tree_ = fs->make<TTree>("OniaTree", "JpsiAnalysis");
@@ -149,9 +161,13 @@ MiniAnalyzer::MiniAnalyzer(const edm::ParameterSet& iConfig) {
     tree_->Branch("nPrunedMuon", &nPrunedMuon_, "nPrunedMuon/I");
     tree_->Branch("hasBHadron", &hasBHadron_, "hasBHadron/I");
     tree_->Branch("isFromB", &isFromB_, "isFromB/I");
+
+    tree_->Branch("passDoubleMu4_3", &passDoubleMu4_3_, "passDoubleMu4_3/I");
+    tree_->Branch("passJpsiLowPt",   &passJpsiLowPt_,   "passJpsiLowPt/I");
 }
 
 void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) {
+    // Clear Vectors
     ch_pt.clear(); ch_eta.clear(); ch_phi.clear(); ch_mass.clear(); ch_energy.clear();
     ak4_jet_pt.clear(); ak4_jet_eta.clear(); ak4_jet_phi.clear(); ak4_jet_energy.clear(); ak4_jet_dr_jpsi.clear();
     ak4_dau_pt.clear(); ak4_dau_eta.clear(); ak4_dau_phi.clear(); ak4_dau_energy.clear();
@@ -160,6 +176,7 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
     ak8_dau_pt.clear(); ak8_dau_eta.clear(); ak8_dau_phi.clear(); ak8_dau_energy.clear();
     ak8_dau_jetIndex.clear(); ak8_dau_charge.clear(); ak8_dau_pdgId.clear();
 
+    // Reset Scalars
     mass_ = -999.0; pt_ = -999.0; eta_ = -999.0; phi_ = -999.0; energy_ = -999.0; charge_ = -999.0;
     vNChi2_ = -999.0; vProb_ = -999.0; ppdlPV_ = -999.0; ppdlErrPV_ = -999.0;
     ppdlBS_ = -999.0; ppdlErrBS_ = -999.0; cosAlpha_ = -999.0; DCA_ = -999.0;
@@ -172,20 +189,54 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
     nPrunedMuon_ = 0; 
     hasBHadron_ = 0;
     isFromB_ = 0;
+    passDoubleMu4_3_ = 0;
+    passJpsiLowPt_ = 0;
 
+    // --- HLT Results ---
+    edm::Handle<edm::TriggerResults> triggerBits;
+    iEvent.getByToken(triggerBitsToken_, triggerBits);
+    if (triggerBits.isValid()) {
+        const edm::TriggerNames &names = iEvent.triggerNames(*triggerBits);
+        for (unsigned int i = 0, n = triggerBits->size(); i < n; ++i) {
+            std::string name = names.triggerName(i);
+            if (triggerBits->accept(i)) {
+                if (name.find("HLT_DoubleMu4_3_LowMass") != std::string::npos) passDoubleMu4_3_ = 1;
+                if (name.find("HLT_DoubleMu2_Jpsi_LowPt") != std::string::npos) passJpsiLowPt_ = 1;
+            }
+        }
+    }
+
+    // --- Primary Vertex for Soft Muon ID ---
+    edm::Handle<std::vector<reco::Vertex>> vertices;
+    iEvent.getByToken(vtxToken_, vertices);
+
+    // --- J/psi Selection ---
     edm::Handle<std::vector<CompositeCandidate>> cands;
     iEvent.getByToken(myCandToken_, cands);
     const CompositeCandidate* bestCand = nullptr;
     if (cands.isValid() && !cands->empty()) {
         float minDm = 1e9;
         for (const auto& cand : *cands) {
+            // New Requirement: Dimuon charge must be zero
+            if (cand.charge() != 0) continue;
+
             float m = cand.mass();
             if (m < 2.9 || m > 3.3) continue;
+
             const pat::Muon* mu1 = dynamic_cast<const pat::Muon*>(cand.daughter(0));
             const pat::Muon* mu2 = dynamic_cast<const pat::Muon*>(cand.daughter(1));
-            if (!mu1 || !mu2) continue;
-            if (mu1->pt() < 3 || mu2->pt() < 3) continue;
-            if (cand.userFloat("vProb") < 0.01) continue;
+
+            // Original commented sections kept as requested
+            //if (!mu1 || !mu2) continue;
+            //if (mu1->pt() < 3 || mu2->pt() < 3) continue;
+            //if (cand.userFloat("vProb") < 0.01) continue;
+
+            //  Both Muons must pass Soft Muon ID
+            if (vertices.isValid() && !vertices->empty()) {
+                const reco::Vertex &pv = vertices->front();
+                if (!mu1->isSoftMuon(pv) || !mu2->isSoftMuon(pv)) continue;
+            }
+
             float dm = std::abs(m - 3.0969);
             if (dm < minDm) {
                 minDm = dm;
@@ -196,12 +247,14 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
 
     if (!bestCand) return;
 
+    // Fill Best Candidate info
     mass_ = bestCand->mass(); pt_ = bestCand->pt(); eta_ = bestCand->eta(); phi_ = bestCand->phi();
     energy_ = bestCand->energy(); charge_ = bestCand->charge();
     vNChi2_ = bestCand->userFloat("vNChi2"); vProb_ = bestCand->userFloat("vProb");
     ppdlPV_ = bestCand->userFloat("ppdlPV"); ppdlErrPV_ = bestCand->userFloat("ppdlErrPV");
     ppdlBS_ = bestCand->userFloat("ppdlBS"); ppdlErrBS_ = bestCand->userFloat("ppdlErrBS");
     cosAlpha_ = bestCand->userFloat("cosAlpha"); DCA_ = bestCand->userFloat("DCA");
+    
     const pat::Muon* mu1_ptr = dynamic_cast<const pat::Muon*>(bestCand->daughter(0));
     const pat::Muon* mu2_ptr = dynamic_cast<const pat::Muon*>(bestCand->daughter(1));
     if (mu1_ptr && mu2_ptr) {
@@ -209,20 +262,19 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
         mu2_pt_ = mu2_ptr->pt(); mu2_eta_ = mu2_ptr->eta(); mu2_phi_ = mu2_ptr->phi(); mu2_energy_ = mu2_ptr->energy();
     }
 
+    // --- Gen Traceback ---
     edm::Handle<edm::View<reco::GenParticle>> prunedgenParticles;
     iEvent.getByToken(prunedGenParticlesToken_, prunedgenParticles);
 
     if (prunedgenParticles.isValid()) {
         for (const auto& gen : *prunedgenParticles) {
             int absId = std::abs(gen.pdgId());
-
             if ((absId / 100) == 5 || (absId / 1000) == 5) hasBHadron_ = 1;
             if (absId == 13) nPrunedMuon_++;
 
             if (absId == 443) {
                 bool hasMuPlus = false;
                 bool hasMuMinus = false;
-
                 for (size_t d = 0; d < gen.numberOfDaughters(); ++d) {
                     const reco::Candidate* dau = gen.daughter(d);
                     if (dau->pdgId() == 13)  hasMuMinus = true;
@@ -231,7 +283,6 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
 
                 if (hasMuPlus && hasMuMinus) {
                     nGenJpsi_++;
-
                     if (gen.numberOfMothers() > 0) {
                         const reco::Candidate* mom = gen.mother(0);
                         int depth = 0;
@@ -240,12 +291,10 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
                             else break;
                             depth++;
                         }
-
                         if (mom) {
                             jpsi_mother_pdgId_ = mom->pdgId();
                             int absMom = std::abs(jpsi_mother_pdgId_);
                             if ((absMom / 100) == 5 || (absMom / 1000) == 5) isFromB_ = 1;
-                            
                             if (mom->numberOfMothers() > 0) {
                                 jpsi_grandmother_pdgId_ = mom->mother(0)->pdgId();
                             }
@@ -256,6 +305,7 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
         }
     }
 
+    // --- PF Candidates ---
     edm::Handle<pat::PackedCandidateCollection> pfCands;
     iEvent.getByToken(pfCandsSrc_, pfCands);
     if (pfCands.isValid()) {
@@ -267,6 +317,7 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
         }
     }
 
+    // --- AK4 Jets ---
     edm::Handle<edm::View<pat::Jet>> ak4Jets;
     iEvent.getByToken(jetAK4Src_, ak4Jets);
     if (ak4Jets.isValid()) {
@@ -288,6 +339,7 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
         }
     }
 
+    // --- AK8 Jets ---
     edm::Handle<edm::View<pat::Jet>> ak8Jets;
     iEvent.getByToken(jetAK8Src_, ak8Jets);
     if (ak8Jets.isValid()) {
