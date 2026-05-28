@@ -58,7 +58,7 @@ private:
     // Tree Variables
     float mass_, pt_, eta_, phi_, charge_, energy_;
     float vNChi2_, vProb_;
-    float ppdlPV_, ppdlErrPV_, ppdlBS_, ppdlErrBS_, cosAlpha_, DCA_;
+    float ppdlPV_, ppdlErrPV_, ppdlBS_, ppdlErrBS_, cosAlpha_, DCA_, ppdlPV3D_, ppdlErrPV3D_,cosAlpha3D_, ppdlBS3D_, ppdlErrBS3D_;
     float mu1_pt_, mu1_eta_, mu1_phi_, mu1_energy_;
     float mu2_pt_, mu2_eta_, mu2_phi_, mu2_energy_;
 
@@ -73,6 +73,7 @@ private:
     int jpsi_mother_pdgId_;
     int jpsi_grandmother_pdgId_;
     int nGenJpsi_;
+    int nGenUpsilon_; // Added variable to check for Upsilon presence in QCD
     int nPrunedMuon_;
     int hasBHadron_;
     int isFromB_;
@@ -87,7 +88,7 @@ MiniAnalyzer::MiniAnalyzer(const edm::ParameterSet& iConfig) {
 
     myCandToken_ = consumes<std::vector<CompositeCandidate>>(iConfig.getParameter<edm::InputTag>("myCandLabel"));
     vtxToken_ = consumes<std::vector<reco::Vertex>>(iConfig.getParameter<edm::InputTag>("primaryVertexTag"));
-    pfCandsSrc_ = consumes<pat::PackedCandidateCollection>(iConfig.getUntrackedParameter<edm::InputTag>("pfCandsSrc"));
+    pfCandsSrc = consumes<pat::PackedCandidateCollection>(iConfig.getUntrackedParameter<edm::InputTag>("pfCandsSrc"));
     jetAK4Src_ = consumes<edm::View<pat::Jet>>(iConfig.getUntrackedParameter<edm::InputTag>("ak4JetSrc"));
     jetAK8Src_ = consumes<edm::View<pat::Jet>>(iConfig.getUntrackedParameter<edm::InputTag>("ak8JetSrc"));
     pileupSrc_ = consumes<std::vector<PileupSummaryInfo>>(iConfig.getUntrackedParameter<edm::InputTag>("pileupSrc"));
@@ -107,8 +108,13 @@ MiniAnalyzer::MiniAnalyzer(const edm::ParameterSet& iConfig) {
     tree_->Branch("vProb",     &vProb_,     "vProb/F");
     tree_->Branch("ppdlPV",    &ppdlPV_,    "ppdlPV/F");
     tree_->Branch("ppdlErrPV", &ppdlErrPV_, "ppdlErrPV/F");
+    tree_->Branch("ppdlPV3D",    &ppdlPV3D_,    "ppdlPV3D/F");
+    tree_->Branch("ppdlErrPV3D", &ppdlErrPV3D_, "ppdlErrPV3D/F");
+    tree_->Branch("cosAlpha3D",  &cosAlpha3D_,  "cosAlpha3D/F");
     tree_->Branch("ppdlBS",    &ppdlBS_,    "ppdlBS/F");
     tree_->Branch("ppdlErrBS", &ppdlErrBS_, "ppdlErrBS/F");
+    tree_->Branch("ppdlBS3D",    &ppdlBS3D_,    "ppdlBS3D/F");
+    tree_->Branch("ppdlErrBS3D", &ppdlErrBS3D_, "ppdlErrBS3D/F");
     tree_->Branch("cosAlpha",  &cosAlpha_,  "cosAlpha/F");
     tree_->Branch("DCA",       &DCA_,       "DCA/F");
 
@@ -158,6 +164,7 @@ MiniAnalyzer::MiniAnalyzer(const edm::ParameterSet& iConfig) {
     tree_->Branch("jpsi_mother_pdgId", &jpsi_mother_pdgId_, "jpsi_mother_pdgId/I");
     tree_->Branch("jpsi_grandmother_pdgId", &jpsi_grandmother_pdgId_, "jpsi_grandmother_pdgId/I");
     tree_->Branch("nGenJpsi", &nGenJpsi_, "nGenJpsi/I");
+    tree_->Branch("nGenUpsilon", &nGenUpsilon_, "nGenUpsilon/I"); // Branch added to OniaTree
     tree_->Branch("nPrunedMuon", &nPrunedMuon_, "nPrunedMuon/I");
     tree_->Branch("hasBHadron", &hasBHadron_, "hasBHadron/I");
     tree_->Branch("isFromB", &isFromB_, "isFromB/I");
@@ -179,6 +186,7 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
     // Reset Scalars
     mass_ = -999.0; pt_ = -999.0; eta_ = -999.0; phi_ = -999.0; energy_ = -999.0; charge_ = -999.0;
     vNChi2_ = -999.0; vProb_ = -999.0; ppdlPV_ = -999.0; ppdlErrPV_ = -999.0;
+    ppdlPV3D_ = -999.0; ppdlErrPV3D_ = -999.0; cosAlpha3D_ = -999.0; ppdlBS3D_ = -999.0; ppdlErrBS3D_ = -999.0;
     ppdlBS_ = -999.0; ppdlErrBS_ = -999.0; cosAlpha_ = -999.0; DCA_ = -999.0;
     mu1_pt_ = -999.0; mu1_eta_ = -999.0; mu1_phi_ = -999.0; mu1_energy_ = -999.0;
     mu2_pt_ = -999.0; mu2_eta_ = -999.0; mu2_phi_ = -999.0; mu2_energy_ = -999.0;
@@ -186,6 +194,7 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
     jpsi_mother_pdgId_ = -999;
     jpsi_grandmother_pdgId_ = -999;
     nGenJpsi_ = 0;
+    nGenUpsilon_ = 0; // Reset counter for each event
     nPrunedMuon_ = 0; 
     hasBHadron_ = 0;
     isFromB_ = 0;
@@ -233,8 +242,8 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
 
             //  Both Muons must pass Soft Muon ID
             if (vertices.isValid() && !vertices->empty()) {
-                const reco::Vertex &pv = vertices->front();
-                if (!mu1->isSoftMuon(pv) || !mu2->isSoftMuon(pv)) continue;
+               const reco::Vertex &pv = vertices->front();
+               if (!mu1->isSoftMuon(pv) || !mu2->isSoftMuon(pv)) continue;
             }
 
             float dm = std::abs(m - 3.0969);
@@ -252,8 +261,11 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
     energy_ = bestCand->energy(); charge_ = bestCand->charge();
     vNChi2_ = bestCand->userFloat("vNChi2"); vProb_ = bestCand->userFloat("vProb");
     ppdlPV_ = bestCand->userFloat("ppdlPV"); ppdlErrPV_ = bestCand->userFloat("ppdlErrPV");
+    ppdlPV3D_ = bestCand->userFloat("ppdlPV3D"); ppdlErrPV3D_ = bestCand->userFloat("ppdlErrPV3D"); 
+    ppdlBS3D_ = bestCand->userFloat("ppdlBS3D"); ppdlErrBS3D_ = bestCand->userFloat("ppdlErrBS3D");
     ppdlBS_ = bestCand->userFloat("ppdlBS"); ppdlErrBS_ = bestCand->userFloat("ppdlErrBS");
     cosAlpha_ = bestCand->userFloat("cosAlpha"); DCA_ = bestCand->userFloat("DCA");
+    cosAlpha3D_ = bestCand->userFloat("cosAlpha3D");
     
     const pat::Muon* mu1_ptr = dynamic_cast<const pat::Muon*>(bestCand->daughter(0));
     const pat::Muon* mu2_ptr = dynamic_cast<const pat::Muon*>(bestCand->daughter(1));
@@ -271,6 +283,11 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
             int absId = std::abs(gen.pdgId());
             if ((absId / 100) == 5 || (absId / 1000) == 5) hasBHadron_ = 1;
             if (absId == 13) nPrunedMuon_++;
+
+            // Intercept and count Upsilon meson states (Bottomonium family: 1S, 2S, 3S...)
+            if (absId == 553 || absId == 30553 || absId == 100553 || absId == 200553) {
+                nGenUpsilon_++;
+            }
 
             if (absId == 443) {
                 bool hasMuPlus = false;

@@ -26,6 +26,20 @@ process.source = cms.Source("PoolSource",
 process.TFileService = cms.Service("TFileService",
                                    fileName=cms.string("qcd_sample_output.root"))
 
+# ---------------------------------------------------------
+# HLT Filter (Trigger Selection)
+# ---------------------------------------------------------
+process.triggerSelection = cms.EDFilter("HLTHighLevel",
+    TriggerResultsTag = cms.InputTag("TriggerResults","","HLT"),
+    HLTPaths = cms.vstring(
+        'HLT_DoubleMu4_3_LowMass_v*', 
+        'HLT_DoubleMu2_Jpsi_LowPt_v*'
+    ),
+    eventSetupPathsKey = cms.string(''),
+    andOr = cms.bool(True),
+    throw = cms.bool(False)
+)
+
 # ------------------------------
 # Muon cleaning and selection
 # ------------------------------
@@ -45,12 +59,13 @@ process.selectedMuons = cms.EDFilter("PATMuonSelector",
 # Onia2MuMuPAT (J/psi -> mu mu)
 # ------------------------------
 process.onia2MuMuPATUpdated = onia2MuMuPAT.clone(
-    muons=cms.InputTag("selectedMuons"),
+    muons=cms.InputTag("boostedMuons"),
     beamSpotTag=cms.InputTag("offlineBeamSpot"),
     primaryVertexTag=cms.InputTag("offlineSlimmedPrimaryVertices"),
     higherPuritySelection=cms.string("isTrackerMuon"),
     lowerPuritySelection=cms.string("isTrackerMuon"),
-    dimuonSelection=cms.string("2.9 < mass < 3.3 && abs(daughter('muon1').innerTrack.dz - daughter('muon2').innerTrack.dz) < 25"),
+    #dimuonSelection=cms.string("2.9 < mass < 3.3 && abs(daughter('muon1').innerTrack.dz - daughter('muon2').innerTrack.dz) < 25"),
+    dimuonSelection=cms.string(""),
     addCommonVertex=cms.bool(True),
     addMuonlessPrimaryVertex=cms.bool(False),
     resolvePileUpAmbiguity=cms.bool(True),
@@ -107,20 +122,21 @@ process.MiniAnalyzer = cms.EDAnalyzer("MiniAnalyzer",
     ak4JetSrc          = cms.untracked.InputTag("slimmedJetsJEC"),
     ak8JetSrc          = cms.untracked.InputTag("slimmedAK8JetsJEC"),
     pileupSrc          = cms.untracked.InputTag("slimmedAddPileupInfo"),
-    prunedGenParticlesSrc = cms.untracked.InputTag("prunedGenParticles")  
+    prunedGenParticlesSrc = cms.untracked.InputTag("prunedGenParticles")
 )
 
 # ------------------------------
 # Full Path
 # ------------------------------
 process.p = cms.Path(
-    process.boostedMuons
-    * process.selectedMuons
-    * process.onia2MuMuPATUpdated
-    * process.jetCorrFactors
-    * process.pileupJetIdUpdated
-    * process.slimmedJetsJEC
-    * process.ak8JetCorrFactors
-    * process.slimmedAK8JetsJEC
-    * process.MiniAnalyzer
+    process.triggerSelection *
+    process.boostedMuons *
+    process.selectedMuons *
+    process.onia2MuMuPATUpdated *
+    process.jetCorrFactors *
+    process.pileupJetIdUpdated *
+    process.slimmedJetsJEC *
+    process.ak8JetCorrFactors *
+    process.slimmedAK8JetsJEC *
+    process.MiniAnalyzer
 )

@@ -142,13 +142,18 @@ void Onia2MuMuPAT::produce(edm::Event &iEvent, const edm::EventSetup &iSetup) {
           myCand.addUserFloat("vNChi2", vChi2 / vNDF);
           myCand.addUserFloat("vProb", vProb);
 
-          TVector3 vtx;
-          TVector3 pvtx;
+          TVector3 vtx,vtx3D;
+          TVector3 pvtx,pvtx3D;
           VertexDistanceXY vdistXY;
+          VertexDistance3D vdistXYZ;
 
           vtx.SetXYZ(myVertex.position().x(), myVertex.position().y(), 0);
           TVector3 pperp(jpsi.px(), jpsi.py(), 0);
           AlgebraicVector3 vpperp(pperp.x(), pperp.y(), 0);
+
+          vtx3D.SetXYZ(myVertex.position().x(), myVertex.position().y(), myVertex.position().z());
+					TVector3 pxyz(jpsi.px(), jpsi.py(), jpsi.pz());
+					AlgebraicVector3 vpxyz(pxyz.x(), pxyz.y(), pxyz.z());
 
           if (resolveAmbiguity_) {
             float minDz = 999999.;
@@ -319,6 +324,17 @@ void Onia2MuMuPAT::produce(edm::Event &iEvent, const edm::EventSetup &iSetup) {
           myCand.addUserFloat("ppdlErrPV", ctauErrPV);
           myCand.addUserFloat("cosAlpha", cosAlpha);
 
+          pvtx3D.SetXYZ(thePrimaryV.position().x(), thePrimaryV.position().y(), thePrimaryV.position().z());
+					TVector3 vdiff3D = vtx3D - pvtx3D;
+					double cosAlpha3D = vdiff3D.Dot(pxyz) / (vdiff3D.Mag()*pxyz.Mag());
+					Measurement1D distXYZ = vdistXYZ.distance(Vertex(myVertex), thePrimaryV);
+					double ctauPV3D = distXYZ.value()*cosAlpha3D*3.096916 / pxyz.Mag();
+					double ctauErrPV3D = sqrt(ROOT::Math::Similarity(vpxyz, vXYe))*3.096916 / (pxyz.Mag2());
+
+					myCand.addUserFloat("ppdlPV3D", ctauPV3D);
+					myCand.addUserFloat("ppdlErrPV3D", ctauErrPV3D);
+					myCand.addUserFloat("cosAlpha3D", cosAlpha3D);
+
           // lifetime using BS
           pvtx.SetXYZ(theBeamSpotV.position().x(), theBeamSpotV.position().y(), 0);
           vdiff = vtx - pvtx;
@@ -335,6 +351,16 @@ void Onia2MuMuPAT::produce(edm::Event &iEvent, const edm::EventSetup &iSetup) {
           myCand.addUserFloat("ppdlBS", ctauBS);
           myCand.addUserFloat("ppdlErrBS", ctauErrBS);
 
+          pvtx3D.SetXYZ(theBeamSpotV.position().x(), theBeamSpotV.position().y(), theBeamSpotV.position().z());
+					vdiff3D = vtx3D - pvtx3D;
+					cosAlpha3D = vdiff3D.Dot(pxyz) / (vdiff3D.Mag()*pxyz.Mag());
+					distXYZ = vdistXYZ.distance(Vertex(myVertex), theBeamSpotV);
+					double ctauBS3D = distXYZ.value()*cosAlpha3D*3.096916 / pxyz.Mag();
+					double ctauErrBS3D = sqrt(ROOT::Math::Similarity(vpxyz, vXYeB))*3.096916 / (pxyz.Mag2());
+
+					myCand.addUserFloat("ppdlBS3D", ctauBS3D);
+					myCand.addUserFloat("ppdlErrBS3D", ctauErrBS3D);
+
           if (addCommonVertex_) {
             myCand.addUserData("commonVertex", Vertex(myVertex));
           }
@@ -342,10 +368,15 @@ void Onia2MuMuPAT::produce(edm::Event &iEvent, const edm::EventSetup &iSetup) {
           myCand.addUserFloat("vNChi2", -1);
           myCand.addUserFloat("vProb", -1);
           myCand.addUserFloat("ppdlPV", -100);
+          myCand.addUserFloat("ppdlPV3D", -100);
           myCand.addUserFloat("ppdlErrPV", -100);
+          myCand.addUserFloat("ppdlErrPV3D", -100);
           myCand.addUserFloat("cosAlpha", -100);
+          myCand.addUserFloat("cosAlpha3D", -100);
           myCand.addUserFloat("ppdlBS", -100);
+          myCand.addUserFloat("ppdlBS3D", -100);
           myCand.addUserFloat("ppdlErrBS", -100);
+          myCand.addUserFloat("ppdlErrBS3D", -100);
           myCand.addUserFloat("DCA", -1);
           if (addCommonVertex_) {
             myCand.addUserData("commonVertex", Vertex());

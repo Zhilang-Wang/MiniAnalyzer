@@ -9,7 +9,7 @@ process = cms.Process("MiniAnalyzer")
 # ---------------------------------------------------------
 process.load("FWCore.MessageService.MessageLogger_cfi")
 process.MessageLogger.cerr.FwkReport.reportEvery = 100
-process.maxEvents = cms.untracked.PSet(input=cms.untracked.int32(10000))  
+process.maxEvents = cms.untracked.PSet(input=cms.untracked.int32(100000))  
 
 process.load("Configuration.StandardSequences.Services_cff")
 process.load("Configuration.StandardSequences.MagneticField_cff")
@@ -34,7 +34,7 @@ process.source = cms.Source("PoolSource",
 )
 
 process.TFileService = cms.Service("TFileService",
-                                   fileName=cms.string("./result/jpsi_Jet_10000ev_QCD.root"))
+                                   fileName=cms.string("./result/test_100w_qcd.root"))
 
 # ---------------------------------------------------------
 # HLT Filter (Trigger Selection)
@@ -74,8 +74,8 @@ process.onia2MuMuPATUpdated = onia2MuMuPAT.clone(
     primaryVertexTag=cms.InputTag("offlineSlimmedPrimaryVertices"),
     higherPuritySelection=cms.string("isTrackerMuon"),
     lowerPuritySelection=cms.string("isTrackerMuon"),
-   #dimuonSelection=cms.string("2.9 < mass < 3.3 && abs(daughter('muon1').innerTrack.dz - daughter('muon2').innerTrack.dz) < 25"),
-    dimuonSelection=cms.string("2.9 < mass < 3.3"),
+    #dimuonSelection=cms.string("2.9 < mass < 3.3 && abs(daughter('muon1').innerTrack.dz - daughter('muon2').innerTrack.dz) < 25"),
+    dimuonSelection=cms.string(""),
     addCommonVertex=cms.bool(True),
     addMuonlessPrimaryVertex=cms.bool(False),
     resolvePileUpAmbiguity=cms.bool(True),

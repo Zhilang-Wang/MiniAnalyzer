@@ -1,80 +1,78 @@
 import uproot
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 
-# 1. Open the file
-file = uproot.open("../result/jpsi_Jet_100000ev_QCD.root")
+# --- 1. Configuration and Paths ---
+input_file = "../result/jpsi_qcd_qec_all.root"
+output_dir = "plots_qec_comprehensive"
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
 
-# 2. Read histograms from the ROOT file
-h_qec_charged        = file["qec_all_charged"]
-h_qec_charged_in     = file["qec_charged_in"]
-h_qec_jet_out        = file["qec_jet_out"]
-h_qec_jet_in         = file["qec_jet_in"]
-h_qec_jet_in_charged = file["qec_jet_in_charged"]
-h_qec_jet_in_neutral = file["qec_jet_in_neutral"]
-h_qec_jet_all        = file["qec_jet_all"]
+file = uproot.open(input_file)
 
-# Helper function to extract values and edges
-def get_data(h):
+# --- 2. Core Plotting Functions ---
+def get_norm_data(name):
+    """
+    Extract histogram and apply Unit Sum normalization.
+    """
+    if name not in file:
+        return None, None
+    h = file[name]
     v, e = h.to_numpy()
-    return v, e
+    
+    total_counts = np.sum(v)
+    if total_counts > 0:
+        v_norm = v / total_counts
+    else:
+        v_norm = v
+    
+    return v_norm, e
 
-v_ch, e_ch               = get_data(h_qec_charged)
-v_ch_in, e_ch_in         = get_data(h_qec_charged_in)
-v_jet_out, e_jet_out     = get_data(h_qec_jet_out)
-v_jet_in, e_jet_in       = get_data(h_qec_jet_in)
-v_in_chrg, e_in_chrg     = get_data(h_qec_jet_in_charged)
-v_in_neut, e_in_neut     = get_data(h_qec_jet_in_neutral)
-v_jet_all, e_jet_all     = get_data(h_qec_jet_all)
+def plot_comparison(base_name, title, filename):
+    plt.figure(figsize=(9, 7))
+    
+    # suffix, label, color, linestyle, linewidth, alpha
+    # High contrast settings for Direct and Feed-down
+    sub_types = [
+        ("",          "Total (All)",         "black",       "-",  2.0, 1.0),
+        ("_prompt",   "Prompt (Total)",      "blue",        "-",  2.5, 0.4), # Semi-transparent
+        ("_direct",   "Prompt: Direct",      "darkorange", "--",  2.2, 1.0), # High contrast
+        ("_fd",       "Prompt: Feed-down",   "forestgreen", "--",  2.5, 1.0), # Distinct dots
+        ("_np",       "Non-Prompt (from B)", "red",         "-",  1.8, 1.0)
+    ]
+    
+    for suffix, label, color, lstyle, lwidth, alpha_val in sub_types:
+        v_norm, edges = get_norm_data(f"{base_name}{suffix}")
+        if v_norm is not None:
+            plt.step(edges, np.append(v_norm, v_norm[-1]), where='post', 
+                     label=label, color=color, linestyle=lstyle, lw=lwidth, alpha=alpha_val)
 
-# --- Define Global Baseline (Total J/psi Events) ---
-total_events = 156
-if total_events == 0: total_events = 1.0
-
-# --- Standardized Plotting Style Function ---
-def apply_style(title, ylabel="Normalized to Total J/psi Events"):
     plt.xlabel(r"$\cos\chi$", fontsize=14)
-    plt.ylabel(ylabel, fontsize=14)
+    plt.ylabel("Unit-sum normalized", fontsize=14)
     plt.yscale("log")
     plt.xlim(-1, 1)
-    
-    # Force Y-axis range and display the tick for 10
-    plt.ylim(1e-8, 100) 
-    plt.yticks([1e-8, 1e-6, 1e-4, 1e-2, 1, 10,20,30,40]) 
+    plt.ylim(1e-7, 5) 
     
     plt.grid(True, which="both", ls="-", alpha=0.2)
-    
-    # Legend on the upper right to avoid overlapping left-side peaks
-    plt.legend(fontsize=9, loc='upper right') 
-    
-    plt.title(title)
+    plt.legend(fontsize=10, loc='upper right', frameon=True)
+    plt.title(title, fontsize=14)
     plt.tight_layout()
+    
+    plt.savefig(os.path.join(output_dir, filename), dpi=300)
+    plt.close()
 
-def plot_step(edges, values, label, color=None):
-    plt.step(edges, np.append(values, values[-1]), where='post', label=label, color=color)
+# --- 3. Execute Tasks ---
+tasks = [
+    ("qec_jet_all",     "QEC: J/psi vs AK8 Jet (Overall)", "comparison_jet_all.png"),
+    ("qec_jet_in",      "QEC: J/psi Inside AK8 Jet",       "comparison_jet_inside.png"),
+    ("qec_jet_out",     "QEC: J/psi Outside AK8 Jet",      "comparison_jet_outside.png"),
+    ("qec_all_charged", "QEC: Global Charged Hadrons",     "comparison_charged_global.png"),
+    ("qec_charged_in",  "QEC: Charged Hadrons (J/psi In Jet)", "comparison_charged_in_jet.png")
+]
 
-# --- Figure 1: J/psi and AK8 Jet Spatial Relation ---
-plt.figure(figsize=(8,6))
-plot_step(e_jet_in,  v_jet_in/total_events,  r"$J/\psi$ inside AK8 jet")
-plot_step(e_jet_out, v_jet_out/total_events, r"$J/\psi$ outside AK8 jet")
-plot_step(e_jet_all, v_jet_all/total_events, r"$J/\psi$ vs. AK8 jet (all)")
-apply_style("Plot 1: J/psi and AK8 Jet Spatial Relation")
-plt.savefig("coschi_part1_jet_spatial.png", dpi=300)
+for base, title, fname in tasks:
+    print(f"Processing: {title}...")
+    plot_comparison(base, title, fname)
 
-# --- Figure 2: Inside AK8 Jet Components ---
-plt.figure(figsize=(8,6))
-plot_step(e_in_chrg, v_in_chrg/total_events, r"$J/\psi$ inside AK8 (jet charged dau)")
-plot_step(e_in_neut, v_in_neut/total_events, r"$J/\psi$ inside AK8 (jet neutral dau)")
-plot_step(e_jet_in,  v_jet_in/total_events,  r"$J/\psi$ inside AK8 jet (sum)")
-apply_style("Plot 2: Inside AK8 Jet Components")
-plt.savefig("coschi_part2_inside_jet.png", dpi=300)
-
-# --- Figure 3: Charged Hadron Comparison (Normalized to Total Events) ---
-plt.figure(figsize=(8,6))
-# Using total_events normalization for all curves here
-plot_step(e_ch_in,   v_ch_in/total_events,   r"$J/\psi$ inside AK8 (PF all charged)")
-plot_step(e_in_chrg, v_in_chrg/total_events, r"$J/\psi$ inside AK8 (Jet charged dau)")
-apply_style("Plot 3: PF Charged vs. Jet Daughters Yield")
-plt.savefig("coschi_part3_charged_yield.png", dpi=300)
-
-print("Plotting complete: All 3 plots are now normalized to the total J/psi event count (11682).")
+print(f"\nDone! High-contrast plots saved in: '{output_dir}'")
