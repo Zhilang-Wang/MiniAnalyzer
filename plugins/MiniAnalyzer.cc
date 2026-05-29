@@ -88,7 +88,7 @@ MiniAnalyzer::MiniAnalyzer(const edm::ParameterSet& iConfig) {
 
     myCandToken_ = consumes<std::vector<CompositeCandidate>>(iConfig.getParameter<edm::InputTag>("myCandLabel"));
     vtxToken_ = consumes<std::vector<reco::Vertex>>(iConfig.getParameter<edm::InputTag>("primaryVertexTag"));
-    pfCandsSrc = consumes<pat::PackedCandidateCollection>(iConfig.getUntrackedParameter<edm::InputTag>("pfCandsSrc"));
+    pfCandsSrc_ = consumes<pat::PackedCandidateCollection>(iConfig.getUntrackedParameter<edm::InputTag>("pfCandsSrc"));
     jetAK4Src_ = consumes<edm::View<pat::Jet>>(iConfig.getUntrackedParameter<edm::InputTag>("ak4JetSrc"));
     jetAK8Src_ = consumes<edm::View<pat::Jet>>(iConfig.getUntrackedParameter<edm::InputTag>("ak8JetSrc"));
     pileupSrc_ = consumes<std::vector<PileupSummaryInfo>>(iConfig.getUntrackedParameter<edm::InputTag>("pileupSrc"));
