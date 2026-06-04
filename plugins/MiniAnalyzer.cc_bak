@@ -230,15 +230,15 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
             if (cand.charge() != 0) continue;
 
             float m = cand.mass();
-            if (m < 3.0 || m > 3.2) continue;
+            if (m < 2.9 || m > 3.3) continue;
 
             const pat::Muon* mu1 = dynamic_cast<const pat::Muon*>(cand.daughter(0));
             const pat::Muon* mu2 = dynamic_cast<const pat::Muon*>(cand.daughter(1));
 
-            // selection criteria based on 6/3/2026 discussion
-            if (mu1->eta() > 2.4 || mu1->eta() < -2.4 || mu2->eta() > 2.4 || mu2->eta() < -2.4) continue;
-            if (mu1->pt() <= 2 || mu2->pt() <= 2) continue;
-            if (cand.userFloat("vProb") <= 0.01) continue;
+            // Original commented sections kept as requested
+            //if (!mu1 || !mu2) continue;
+            //if (mu1->pt() < 3 || mu2->pt() < 3) continue;
+            //if (cand.userFloat("vProb") < 0.01) continue;
 
             //  Both Muons must pass Soft Muon ID
             if (vertices.isValid() && !vertices->empty()) {

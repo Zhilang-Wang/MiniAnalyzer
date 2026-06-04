@@ -4,7 +4,7 @@ config = config()
 # ================================
 # General
 # ================================
-config.General.requestName = 'MiniAnalyzer_JPsi_Run3'
+config.General.requestName = 'MiniAnalyzer_JPsiGun_Run3'
 config.General.workArea = 'crab_projects'
 config.General.transferOutputs = True
 config.General.transferLogs = True
@@ -13,7 +13,7 @@ config.General.transferLogs = True
 # JobType
 # ================================
 config.JobType.pluginName = 'Analysis'
-config.JobType.psetName = 'runMiniAnalyzer_cfg.py'   
+config.JobType.psetName = 'runMiniAnalyzer_jpsigun_sample.py'   
 config.JobType.allowUndistributedCMSSW = True
 
 # ================================

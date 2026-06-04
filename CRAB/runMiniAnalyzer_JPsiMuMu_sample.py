@@ -13,19 +13,33 @@ process.load("Configuration.StandardSequences.MagneticField_cff")
 process.load("Configuration.Geometry.GeometryRecoDB_cff")
 process.load("Configuration.StandardSequences.FrontierConditions_GlobalTag_cff")
 
-process.GlobalTag = GlobalTag(process.GlobalTag, "126X_mcRun3_2023_forPU65_v3", "")
+process.GlobalTag = GlobalTag(process.GlobalTag, '150X_mcRun3_2024_realistic_v2', '') 
 process.load("TrackingTools.TransientTrack.TransientTrackBuilder_cfi")
 
 process.Timing = cms.Service("Timing",
                              summaryOnly=cms.untracked.bool(True))
-
 
 process.source = cms.Source("PoolSource",
     fileNames = cms.untracked.vstring()
 )
 
 process.TFileService = cms.Service("TFileService",
-                                   fileName=cms.string("jpsi_to_mumu_output.root"))
+                                   fileName=cms.string("JPsiMuMu_sample_output.root"))
+
+# ---------------------------------------------------------
+# HLT Filter (Trigger Selection)
+# ---------------------------------------------------------
+process.triggerSelection = cms.EDFilter("HLTHighLevel",
+    TriggerResultsTag = cms.InputTag("TriggerResults","","HLT"),
+    HLTPaths = cms.vstring(
+        'HLT_DoubleMu4_3_LowMass_v*', 
+        'HLT_DoubleMu2_Jpsi_LowPt_v*'
+    ),
+    eventSetupPathsKey = cms.string(''),
+    andOr = cms.bool(True),
+    throw = cms.bool(False)
+)
+
 # ------------------------------
 # Muon cleaning and selection
 # ------------------------------
@@ -45,12 +59,13 @@ process.selectedMuons = cms.EDFilter("PATMuonSelector",
 # Onia2MuMuPAT (J/psi -> mu mu)
 # ------------------------------
 process.onia2MuMuPATUpdated = onia2MuMuPAT.clone(
-    muons=cms.InputTag("selectedMuons"),
+    muons=cms.InputTag("boostedMuons"),
     beamSpotTag=cms.InputTag("offlineBeamSpot"),
     primaryVertexTag=cms.InputTag("offlineSlimmedPrimaryVertices"),
     higherPuritySelection=cms.string("isTrackerMuon"),
     lowerPuritySelection=cms.string("isTrackerMuon"),
-    dimuonSelection=cms.string("2.9 < mass < 3.3 && abs(daughter('muon1').innerTrack.dz - daughter('muon2').innerTrack.dz) < 25"),
+    #dimuonSelection=cms.string("2.9 < mass < 3.3 && abs(daughter('muon1').innerTrack.dz - daughter('muon2').innerTrack.dz) < 25"),
+    dimuonSelection=cms.string(""),
     addCommonVertex=cms.bool(True),
     addMuonlessPrimaryVertex=cms.bool(False),
     resolvePileUpAmbiguity=cms.bool(True),
@@ -73,7 +88,6 @@ process.slimmedJetsJEC = process.updatedPatJets.clone(
     jetCorrFactorsSource = cms.VInputTag(cms.InputTag("jetCorrFactors"))
 )
 
-# Pileup Jet ID for AK4
 process.load("RecoJets.JetProducers.PileupJetID_cfi")
 process.pileupJetIdUpdated = process.pileupJetId.clone(
     jets=cms.InputTag("slimmedJets"),
@@ -99,7 +113,7 @@ process.slimmedAK8JetsJEC = process.updatedPatJets.clone(
 )
 
 # ------------------------------
-# MiniAnalyzer
+# MiniAnalyzer  
 # ------------------------------
 process.MiniAnalyzer = cms.EDAnalyzer("MiniAnalyzer",
     myCandLabel        = cms.InputTag("onia2MuMuPATUpdated"),
@@ -107,20 +121,22 @@ process.MiniAnalyzer = cms.EDAnalyzer("MiniAnalyzer",
     pfCandsSrc         = cms.untracked.InputTag("packedPFCandidates"),
     ak4JetSrc          = cms.untracked.InputTag("slimmedJetsJEC"),
     ak8JetSrc          = cms.untracked.InputTag("slimmedAK8JetsJEC"),
-    pileupSrc          = cms.untracked.InputTag("slimmedAddPileupInfo")
+    pileupSrc          = cms.untracked.InputTag("slimmedAddPileupInfo"),
+    prunedGenParticlesSrc = cms.untracked.InputTag("prunedGenParticles")
 )
 
 # ------------------------------
 # Full Path
 # ------------------------------
 process.p = cms.Path(
-    process.boostedMuons
-    * process.selectedMuons
-    * process.onia2MuMuPATUpdated
-    * process.jetCorrFactors
-    * process.pileupJetIdUpdated
-    * process.slimmedJetsJEC
-    * process.ak8JetCorrFactors
-    * process.slimmedAK8JetsJEC
-    * process.MiniAnalyzer
+    process.triggerSelection *
+    process.boostedMuons *
+    process.selectedMuons *
+    process.onia2MuMuPATUpdated *
+    process.jetCorrFactors *
+    process.pileupJetIdUpdated *
+    process.slimmedJetsJEC *
+    process.ak8JetCorrFactors *
+    process.slimmedAK8JetsJEC *
+    process.MiniAnalyzer
 )

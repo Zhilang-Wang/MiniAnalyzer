@@ -30,8 +30,3 @@ config.Data.publication = False
 
 config.Data.outputDatasetTag = 'MiniAnalyzer_QCD_PT600to800_2024'
 
-# ================================
-# Site
-# ================================
-# 允许在 Bari、DESY 或 CERN 跑
-#config.Site.whitelist = ['T2_IT_Bari', 'T2_DE_DESY', 'T2_CH_CERN']
