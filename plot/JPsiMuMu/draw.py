@@ -2,8 +2,8 @@ import ROOT
 import os
 import glob
 
-input_files = glob.glob("/eos/user/z/zhilang/JPsiMuMu_Fil-JPsiNo-2MuPtEta_TuneCP5_13p6TeV_pythia8-evtgen/MiniAnalyzer_JPsiMuMu_Signal_2024/260602_065534/0001/*.root")
-output_folder = "AnalysisPlots_lowVProb"
+input_files = glob.glob("/eos/user/z/zhilang/JPsiMuMu_Fil-JPsiNo-2MuPtEta_TuneCP5_13p6TeV_pythia8-evtgen/MiniAnalyzer_JPsiMuMu_Signal_2024/260604_130150/0001/*.root")
+output_folder = "AnalysisPlots_newCuts"
 tree_path = "MiniAnalyzer/OniaTree"
 
 if not os.path.exists(output_folder):
@@ -52,7 +52,7 @@ canvas = ROOT.TCanvas("c", "c", 800, 600)
 ROOT.gStyle.SetOptStat(111111)
 
 # Apply a tighter cut on vertex probability to focus on higher-quality candidates
-base_cut = "nGenJpsi > 0 && jpsi_mother_pdgId != -999 && vProb < 0.01"
+base_cut = "nGenJpsi > 0 && jpsi_mother_pdgId != -999"
 
 for var, title, bins, xmin, xmax in variables:
     print(f"Drawing {var}...")

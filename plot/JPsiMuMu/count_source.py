@@ -82,7 +82,7 @@ def main(input_pattern):
         print(f"  - {get_particle_name(pid)} (PDG {pid}): {c} events")
     print("="*30 + "\n")
 
-    output_pdf = "Jpsi_Detailed_Analysis_Report.pdf"
+    output_pdf = "Jpsi_Detailed_Analysis_Report_NewCuts.pdf"
     with PdfPages(output_pdf) as pdf:
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12))
         

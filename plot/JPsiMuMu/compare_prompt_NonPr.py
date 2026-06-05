@@ -3,8 +3,8 @@ import os
 import glob
 
 # --- 1. Paths ---
-input_files = glob.glob("/eos/user/z/zhilang/JPsiMuMu_Fil-JPsiNo-2MuPtEta_TuneCP5_13p6TeV_pythia8-evtgen/MiniAnalyzer_JPsiMuMu_Signal_2024/260602_065534/0001/*.root")
-output_folder = "ComparisonPlots"
+input_files = glob.glob("/eos/user/z/zhilang/JPsiMuMu_Fil-JPsiNo-2MuPtEta_TuneCP5_13p6TeV_pythia8-evtgen/MiniAnalyzer_JPsiMuMu_Signal_2024/260604_130150/0001/*.root")
+output_folder = "ComparisonPlots_NewCuts"
 tree_path = "MiniAnalyzer/OniaTree"
 
 if not os.path.exists(output_folder):

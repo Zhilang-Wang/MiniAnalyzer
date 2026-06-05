@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 import os
 
 # --- 1. Configuration and Paths ---
-input_file = "../../result/JPsiMuMu_qec_all_trigger.root"
-output_dir = "plots_qec_comprehensive"
+input_file = "../../result/JPsiMuMu_qec_all_trigger_NewCuts.root"
+output_dir = "plots_qec_comprehensive_NewCuts"
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
 
