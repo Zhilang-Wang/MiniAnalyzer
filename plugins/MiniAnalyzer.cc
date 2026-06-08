@@ -58,7 +58,7 @@ private:
     // Tree Variables
     float mass_, pt_, eta_, phi_, charge_, energy_;
     float vNChi2_, vProb_;
-    float ppdlPV_, ppdlErrPV_, ppdlBS_, ppdlErrBS_, cosAlpha_, DCA_, ppdlPV3D_, ppdlErrPV3D_,cosAlpha3D_, ppdlBS3D_, ppdlErrBS3D_;
+    float ppdlPV_, ppdlErrPV_, ppdlBS_, ppdlErrBS_, cosAlpha_, DCA_, ppdlPV3D_, ppdlErrPV3D_, cosAlpha3D_, ppdlBS3D_, ppdlErrBS3D_;
     float mu1_pt_, mu1_eta_, mu1_phi_, mu1_energy_;
     float mu2_pt_, mu2_eta_, mu2_phi_, mu2_energy_;
 
@@ -81,6 +81,10 @@ private:
     // Trigger variables
     int passDoubleMu4_3_;
     int passJpsiLowPt_;
+
+    // Gen-Reco Matching variables
+    float gen_reco_dr_;
+    int is_gen_matched_;
 };
 
 MiniAnalyzer::MiniAnalyzer(const edm::ParameterSet& iConfig) {
@@ -171,6 +175,10 @@ MiniAnalyzer::MiniAnalyzer(const edm::ParameterSet& iConfig) {
 
     tree_->Branch("passDoubleMu4_3", &passDoubleMu4_3_, "passDoubleMu4_3/I");
     tree_->Branch("passJpsiLowPt",   &passJpsiLowPt_,   "passJpsiLowPt/I");
+
+    // Gen-Reco Matching Branches
+    tree_->Branch("gen_reco_dr",     &gen_reco_dr_,     "gen_reco_dr/F");
+    tree_->Branch("is_gen_matched",  &is_gen_matched_,  "is_gen_matched/I");
 }
 
 void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) {
@@ -201,6 +209,10 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
     passDoubleMu4_3_ = 0;
     passJpsiLowPt_ = 0;
 
+    // Reset Matching Scalars
+    gen_reco_dr_ = 999.0;
+    is_gen_matched_ = 0;
+
     // --- HLT Results ---
     edm::Handle<edm::TriggerResults> triggerBits;
     iEvent.getByToken(triggerBitsToken_, triggerBits);
@@ -230,8 +242,8 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
             if (cand.charge() != 0) continue;
 
             float m = cand.mass();
-            if (m < 3.0 || m > 3.2) continue;
-
+            if (m < 2.9 || m > 3.3) continue;
+ 
             const pat::Muon* mu1 = dynamic_cast<const pat::Muon*>(cand.daughter(0));
             const pat::Muon* mu2 = dynamic_cast<const pat::Muon*>(cand.daughter(1));
 
@@ -274,9 +286,12 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
         mu2_pt_ = mu2_ptr->pt(); mu2_eta_ = mu2_ptr->eta(); mu2_phi_ = mu2_ptr->phi(); mu2_energy_ = mu2_ptr->energy();
     }
 
-    // --- Gen Traceback ---
+    // --- Gen Traceback & DeltaR Matching ---
     edm::Handle<edm::View<reco::GenParticle>> prunedgenParticles;
     iEvent.getByToken(prunedGenParticlesToken_, prunedgenParticles);
+
+    float minDR = 1e9;
+    const reco::GenParticle* matchedGenJpsi = nullptr;
 
     if (prunedgenParticles.isValid()) {
         for (const auto& gen : *prunedgenParticles) {
@@ -300,23 +315,39 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
 
                 if (hasMuPlus && hasMuMinus) {
                     nGenJpsi_++;
-                    if (gen.numberOfMothers() > 0) {
-                        const reco::Candidate* mom = gen.mother(0);
-                        int depth = 0;
-                        while (mom && std::abs(mom->pdgId()) == 443 && depth < 10) {
-                            if (mom->numberOfMothers() > 0) mom = mom->mother(0);
-                            else break;
-                            depth++;
-                        }
-                        if (mom) {
-                            jpsi_mother_pdgId_ = mom->pdgId();
-                            int absMom = std::abs(jpsi_mother_pdgId_);
-                            if ((absMom / 100) == 5 || (absMom / 1000) == 5) isFromB_ = 1;
-                            if (mom->numberOfMothers() > 0) {
-                                jpsi_grandmother_pdgId_ = mom->mother(0)->pdgId();
-                            }
-                        }
+                    
+                    // Evaluate geometric proximity to the offline reco bestCand
+                    float dr = deltaR(gen.eta(), gen.phi(), eta_, phi_);
+                    if (dr < minDR) {
+                        minDR = dr;
+                        matchedGenJpsi = &gen;
                     }
+                }
+            }
+        }
+    }
+
+    // Perform pedigree traceback and matching confirmation for the closest Gen J/psi
+    if (matchedGenJpsi) {
+        gen_reco_dr_ = minDR;
+        if (gen_reco_dr_ < 0.1) {
+            is_gen_matched_ = 1;
+        }
+
+        if (matchedGenJpsi->numberOfMothers() > 0) {
+            const reco::Candidate* mom = matchedGenJpsi->mother(0);
+            int depth = 0;
+            while (mom && std::abs(mom->pdgId()) == 443 && depth < 10) {
+                if (mom->numberOfMothers() > 0) mom = mom->mother(0);
+                else break;
+                depth++;
+            }
+            if (mom) {
+                jpsi_mother_pdgId_ = mom->pdgId();
+                int absMom = std::abs(jpsi_mother_pdgId_);
+                if ((absMom / 100) == 5 || (absMom / 1000) == 5) isFromB_ = 1;
+                if (mom->numberOfMothers() > 0) {
+                    jpsi_grandmother_pdgId_ = mom->mother(0)->pdgId();
                 }
             }
         }

@@ -2,8 +2,8 @@ import ROOT
 import os
 import glob
 
-input_files = glob.glob("/eos/user/z/zhilang/JPsiMuMu_Fil-JPsiNo-2MuPtEta_TuneCP5_13p6TeV_pythia8-evtgen/MiniAnalyzer_JPsiMuMu_Signal_2024/260604_130150/0001/*.root")
-output_folder = "AnalysisPlots_newCuts"
+input_files = glob.glob("/eos/user/z/zhilang/JPsiMuMu_Fil-JPsiNo-2MuPtEta_TuneCP5_13p6TeV_pythia8-evtgen/MiniAnalyzer_JPsiMuMu_Signal_2024_v2/260607_151455/0001/*.root")
+output_folder = "AnalysisPlots_JPsiMatched"
 tree_path = "MiniAnalyzer/OniaTree"
 
 if not os.path.exists(output_folder):
@@ -31,6 +31,8 @@ variables = [
     ("ppdlBS", "2D Decay Length (BS) [cm]", 100, -0.1, 0.5),
     ("ppdlBS3D", "3D Decay Length (BS) [cm]", 100, -0.1, 0.5),
 
+    ("gen_reco_dr", "DeltaR JPsi (Gen,Reco)", 100, 0.0, 0.2),
+
     ("mu1_pt", "Muon 1 p_{T} [GeV]", 100, 0, 50),
     ("mu1_eta", "Muon 1 #eta", 50, -2.4, 2.4),
     ("mu1_phi", "Muon 1 #phi", 50, -3.14, 3.14),
@@ -52,7 +54,7 @@ canvas = ROOT.TCanvas("c", "c", 800, 600)
 ROOT.gStyle.SetOptStat(111111)
 
 # Apply a tighter cut on vertex probability to focus on higher-quality candidates
-base_cut = "nGenJpsi > 0 && jpsi_mother_pdgId != -999"
+base_cut = "nGenJpsi > 0 && jpsi_mother_pdgId != -999 && is_gen_matched == 1"
 
 for var, title, bins, xmin, xmax in variables:
     print(f"Drawing {var}...")
