@@ -2,6 +2,7 @@ import ROOT
 import os
 import glob
 
+# Input and output paths configuration
 input_files = glob.glob("/eos/user/z/zhilang/JPsiMuMu_Fil-JPsiNo-2MuPtEta_TuneCP5_13p6TeV_pythia8-evtgen/MiniAnalyzer_JPsiMuMu_Signal_2024_v2/260607_151455/0001/*.root")
 output_folder = "AnalysisPlots_JPsiMatched"
 tree_path = "MiniAnalyzer/OniaTree"
@@ -9,6 +10,7 @@ tree_path = "MiniAnalyzer/OniaTree"
 if not os.path.exists(output_folder):
     os.makedirs(output_folder)
 
+# List of variables to plot: (branch_name, x_axis_title, bins, xmin, xmax)
 variables = [
     ("mass", "m(#mu#mu) [GeV]", 100, 2.8, 3.4),
     ("pt", "J/#psi p_{T} [GeV]", 100, 0, 100),
@@ -44,30 +46,40 @@ variables = [
     ("mu2_energy", "Muon 2 Energy [GeV]", 100, 0, 100),
 ]
 
+# Initialize TChain
 chain = ROOT.TChain(tree_path)
 for f in input_files:
     chain.Add(f)
     print(f"Adding file: {f}")
 
+# Global ROOT canvas and style settings
 ROOT.gROOT.SetBatch(True)
 canvas = ROOT.TCanvas("c", "c", 800, 600)
 ROOT.gStyle.SetOptStat(111111)
 
-# Apply a tighter cut on vertex probability to focus on higher-quality candidates
+# Definition of the core background filter (Base Cut)
 base_cut = "nGenJpsi > 0 && jpsi_mother_pdgId != -999 && is_gen_matched == 1"
 
+# Event loop over plotting variables
 for var, title, bins, xmin, xmax in variables:
     print(f"Drawing {var}...")
     h_name = f"h_{var}"
     h = ROOT.TH1F(h_name, f"{var};{title};Events", bins, xmin, xmax)
     
+    # Project tree branch into the histogram
     chain.Draw(f"{var}>>{h_name}", base_cut, "HIST")
     
+    # Visual aesthetics configuration
     h.SetLineColor(ROOT.kAzure+7)
     h.SetLineWidth(2)
+    
+    # Force y-axis origin to zero and scale the upper margin by 20%
+    h.SetMinimum(0)
+    if h.GetMaximum() > 0:
+        h.SetMaximum(h.GetMaximum() * 1.2)
+    
+    # Draw and write to file system
     h.Draw("HIST")
-    
-    
     canvas.SaveAs(f"{output_folder}/{var}.png")
 
-print(f"\nProcessing complete. Plots saved in '{output_folder}'.")
+print(f"\nProcessing complete. All plots saved in '{output_folder}'.")

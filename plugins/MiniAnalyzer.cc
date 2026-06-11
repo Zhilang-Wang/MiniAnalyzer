@@ -316,7 +316,6 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
                 if (hasMuPlus && hasMuMinus) {
                     nGenJpsi_++;
                     
-                    // Evaluate geometric proximity to the offline reco bestCand
                     float dr = deltaR(gen.eta(), gen.phi(), eta_, phi_);
                     if (dr < minDR) {
                         minDR = dr;
@@ -327,7 +326,7 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
         }
     }
 
-    // Perform pedigree traceback and matching confirmation for the closest Gen J/psi
+    //  matching confirmation for the closest Gen J/psi
     if (matchedGenJpsi) {
         gen_reco_dr_ = minDR;
         if (gen_reco_dr_ < 0.1) {

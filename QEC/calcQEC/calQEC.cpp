@@ -5,6 +5,7 @@
 #include <vector>
 #include <iostream>
 #include <set>
+#include <cmath>
 
 using namespace std;
 
@@ -34,8 +35,10 @@ int main(int argc, char* argv[]) {
 
     int isFromB = 0;
     int jpsi_mother_pdgId = 0; 
+    int is_gen_matched = 0; 
     tree->SetBranchAddress("isFromB", &isFromB);
     tree->SetBranchAddress("jpsi_mother_pdgId", &jpsi_mother_pdgId);
+    tree->SetBranchAddress("is_gen_matched", &is_gen_matched); 
 
     float mu1_pt, mu1_eta, mu1_phi, mu1_energy;
     float mu2_pt, mu2_eta, mu2_phi, mu2_energy;
@@ -125,7 +128,7 @@ int main(int argc, char* argv[]) {
     TH1D* h_qec_jet_in_np = new TH1D("qec_jet_in_np", "Non-Prompt QEC in jet;cosTheta", 20, -1, 1);
     TH1D* h_qec_jet_in_charged_np = new TH1D("qec_jet_in_charged_np", "Non-Prompt QEC jet charged;cosTheta", 20, -1, 1);
     TH1D* h_qec_jet_in_neutral_np = new TH1D("qec_jet_in_neutral_np", "Non-Prompt QEC jet neutral;cosTheta", 20, -1, 1);
-    TH1D* h_qec_jet_all_np = new TH1D("qec_jet_all_np", "Non-Prompt QEC jet all;cosTheta", 20, -1, 1);
+    TH1D* h_qec_jet_all_np = new TH1D("qec_jet_all_np", "Non-Prompt QEC jet all;cosTheta", 20, -1, 1); // Fixed Typo here
 
     set<int> fd_ids = {441, 445, 100443, 20443, 10441, 30443, 10443};
     int nTotal = 0, nInJet = 0, nOutJet = 0, nPrompt = 0, nNonPrompt = 0;
@@ -134,7 +137,11 @@ int main(int argc, char* argv[]) {
     Long64_t nEntries = tree->GetEntries();
     for (Long64_t i = 0; i < nEntries; ++i) {
         tree->GetEntry(i);
+        
+        // --- Core Base Cuts ---
+        if (is_gen_matched != 1) continue; 
         if (jpsi_mother_pdgId == -999) continue; 
+        
         nTotal++;
 
         TLorentzVector jpsi, mu1, mu2;
@@ -153,8 +160,10 @@ int main(int argc, char* argv[]) {
         if (jpsiInAnyJet) nInJet++; else nOutJet++;
 
         int abs_mom = abs(jpsi_mother_pdgId);
-        bool isDirect = (isFromB == 0 && (abs_mom == 21 || abs_mom == 2212));
+        
+        // --- Production Mechanisms ---
         bool isFD     = (isFromB == 0 && fd_ids.count(abs_mom));
+        bool isDirect = (isFromB == 0 && !isFD);
 
         if (isFromB == 1) nNonPrompt++;
         else {
