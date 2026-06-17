@@ -24,7 +24,7 @@ def get_particle_name(pdg_id):
 def main(input_pattern):
     print(f"Processing data: {input_pattern}")
     df = ROOT.RDataFrame("MiniAnalyzer/OniaTree", input_pattern)
-    df_valid = df.Filter("nGenJpsi > 0 && jpsi_mother_pdgId != -999")
+    df_valid = df.Filter("nGenJpsi > 0 && jpsi_mother_pdgId != -999 && is_full_jpsi_matched==1")
     
     try:
         col_type = df.GetColumnType("jpsi_mother_pdgId")

@@ -3,7 +3,7 @@ import os
 import glob
 
 # --- 1. Paths ---
-input_files = glob.glob("/eos/user/z/zhilang/JPsiMuMu_Fil-JPsiNo-2MuPtEta_TuneCP5_13p6TeV_pythia8-evtgen/MiniAnalyzer_JPsiMuMu_Signal_2024_v2/260607_151455/0001/*.root")
+input_files = glob.glob("/eos/user/z/zhilang/JPsiMuMu_Fil-JPsiNo-2MuPtEta_TuneCP5_13p6TeV_pythia8-evtgen/MiniAnalyzer_JPsiMuMu_Signal_2024_v3/260615_074128/*/*.root")
 output_folder = "ComparisonPlots_JPsiMatched"
 tree_path = "MiniAnalyzer/OniaTree"
 
@@ -31,7 +31,7 @@ canvas = ROOT.TCanvas("c", "c", 800, 600)
 # --- 3. Cut Definitions for Production Mechanisms (Restructured) ---
 
 # Enforce gen signal validity and perfect matching requirements on all categories
-base_cut = "nGenJpsi > 0 && jpsi_mother_pdgId != -999 && is_gen_matched == 1"
+base_cut = "nGenJpsi > 0 && jpsi_mother_pdgId != -999 && is_full_jpsi_matched == 1"
 
 # Base Classifications
 cut_total   = f"{base_cut}"
@@ -109,7 +109,7 @@ for var_expr, title, bins, xmin, xmax in variables:
     legend.AddEntry(h_total,  "Total Sample", "l")
     legend.AddEntry(h_prompt, "Prompt J/#psi (Total)", "l")
     legend.AddEntry(h_np,     "Non-prompt J/#psi", "l")
-    legend.AddEntry(h_direct, "  - Prompt (Direct)", "l")
+    legend.AddEntry(h_direct, "  - Direct", "l")
     legend.AddEntry(h_fd,     "  - Feed-down", "l")
     legend.Draw()
 

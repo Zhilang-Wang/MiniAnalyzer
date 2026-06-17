@@ -35,10 +35,10 @@ int main(int argc, char* argv[]) {
 
     int isFromB = 0;
     int jpsi_mother_pdgId = 0; 
-    int is_gen_matched = 0; 
+    int is_full_jpsi_matched = 0; 
     tree->SetBranchAddress("isFromB", &isFromB);
     tree->SetBranchAddress("jpsi_mother_pdgId", &jpsi_mother_pdgId);
-    tree->SetBranchAddress("is_gen_matched", &is_gen_matched); 
+    tree->SetBranchAddress("is_full_jpsi_matched", &is_full_jpsi_matched); 
 
     float mu1_pt, mu1_eta, mu1_phi, mu1_energy;
     float mu2_pt, mu2_eta, mu2_phi, mu2_energy;
@@ -139,7 +139,7 @@ int main(int argc, char* argv[]) {
         tree->GetEntry(i);
         
         // --- Core Base Cuts ---
-        if (is_gen_matched != 1) continue; 
+        if (is_full_jpsi_matched != 1) continue; 
         if (jpsi_mother_pdgId == -999) continue; 
         
         nTotal++;

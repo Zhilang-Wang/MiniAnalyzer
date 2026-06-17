@@ -85,6 +85,9 @@ private:
     // Gen-Reco Matching variables
     float gen_reco_dr_;
     int is_gen_matched_;
+    int mu1_is_gen_matched_;
+    int mu2_is_gen_matched_;
+    int is_full_jpsi_matched_;
 };
 
 MiniAnalyzer::MiniAnalyzer(const edm::ParameterSet& iConfig) {
@@ -179,6 +182,9 @@ MiniAnalyzer::MiniAnalyzer(const edm::ParameterSet& iConfig) {
     // Gen-Reco Matching Branches
     tree_->Branch("gen_reco_dr",     &gen_reco_dr_,     "gen_reco_dr/F");
     tree_->Branch("is_gen_matched",  &is_gen_matched_,  "is_gen_matched/I");
+    tree_->Branch("mu1_is_gen_matched", &mu1_is_gen_matched_, "mu1_is_gen_matched/I");
+    tree_->Branch("mu2_is_gen_matched", &mu2_is_gen_matched_, "mu2_is_gen_matched/I");
+    tree_->Branch("is_full_jpsi_matched", &is_full_jpsi_matched_, "is_full_jpsi_matched/I");
 }
 
 void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup) {
@@ -202,7 +208,7 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
     jpsi_mother_pdgId_ = -999;
     jpsi_grandmother_pdgId_ = -999;
     nGenJpsi_ = 0;
-    nGenUpsilon_ = 0; // Reset counter for each event
+    nGenUpsilon_ = 0; 
     nPrunedMuon_ = 0; 
     hasBHadron_ = 0;
     isFromB_ = 0;
@@ -212,6 +218,9 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
     // Reset Matching Scalars
     gen_reco_dr_ = 999.0;
     is_gen_matched_ = 0;
+    mu1_is_gen_matched_ = 0;
+    mu2_is_gen_matched_ = 0;
+    is_full_jpsi_matched_ = 0;
 
     // --- HLT Results ---
     edm::Handle<edm::TriggerResults> triggerBits;
@@ -348,6 +357,28 @@ void MiniAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSet
                 if (mom->numberOfMothers() > 0) {
                     jpsi_grandmother_pdgId_ = mom->mother(0)->pdgId();
                 }
+            }
+        }
+
+        // --- Gen Matching for muons ---
+        if (mu1_ptr && mu2_ptr) {
+            const reco::GenParticle* genMu1 = mu1_ptr->genParticle();
+            const reco::GenParticle* genMu2 = mu2_ptr->genParticle();
+
+            if (genMu1 && std::abs(genMu1->pdgId()) == 13) {
+                if (genMu1->mother() && genMu1->mother() == matchedGenJpsi) {
+                    mu1_is_gen_matched_ = 1;
+                }
+            }
+
+            if (genMu2 && std::abs(genMu2->pdgId()) == 13) {
+                if (genMu2->mother() && genMu2->mother() == matchedGenJpsi) {
+                    mu2_is_gen_matched_ = 1;
+                }
+            }
+
+            if (is_gen_matched_ == 1 && mu1_is_gen_matched_ == 1 && mu2_is_gen_matched_ == 1) {
+                is_full_jpsi_matched_ = 1;
             }
         }
     }

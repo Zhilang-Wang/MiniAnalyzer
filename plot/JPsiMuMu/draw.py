@@ -3,7 +3,7 @@ import os
 import glob
 
 # Input and output paths configuration
-input_files = glob.glob("/eos/user/z/zhilang/JPsiMuMu_Fil-JPsiNo-2MuPtEta_TuneCP5_13p6TeV_pythia8-evtgen/MiniAnalyzer_JPsiMuMu_Signal_2024_v2/260607_151455/0001/*.root")
+input_files = glob.glob("/eos/user/z/zhilang/JPsiMuMu_Fil-JPsiNo-2MuPtEta_TuneCP5_13p6TeV_pythia8-evtgen/MiniAnalyzer_JPsiMuMu_Signal_2024_v3/260615_074128/*/*.root")
 output_folder = "AnalysisPlots_JPsiMatched"
 tree_path = "MiniAnalyzer/OniaTree"
 
@@ -58,7 +58,7 @@ canvas = ROOT.TCanvas("c", "c", 800, 600)
 ROOT.gStyle.SetOptStat(111111)
 
 # Definition of the core background filter (Base Cut)
-base_cut = "nGenJpsi > 0 && jpsi_mother_pdgId != -999 && is_gen_matched == 1"
+base_cut = "nGenJpsi > 0 && jpsi_mother_pdgId != -999 && is_full_jpsi_matched==1"
 
 # Event loop over plotting variables
 for var, title, bins, xmin, xmax in variables:
